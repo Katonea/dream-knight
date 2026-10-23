@@ -51,9 +51,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 #joy i{position:absolute;left:50%;top:50%;width:36px;height:36px;margin:-18px;border-radius:50%;background:rgba(255,255,255,.35)}
 #touch button{position:absolute;pointer-events:auto;width:56px;height:56px;border-radius:50%;border:2px solid var(--line);background:var(--panel);color:var(--text);font:900 14px 'Noto Sans KR',system-ui;touch-action:none}
 #bJump{right:96px;bottom:110px}#bE{right:164px;bottom:58px}#bUlt{right:20px;bottom:110px}#bPause{right:14px;top:120px;width:44px!important;height:44px!important}
-#ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,8,20,.62);padding:16px;overflow:auto}
+#ov{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(10,8,20,.62);padding:16px;overflow:auto}
 #ov.on{display:flex}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:900px;width:100%;text-align:center;backdrop-filter:blur(4px)}
+.panel{margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:900px;width:100%;text-align:center;backdrop-filter:blur(4px)}
 .panel h1{font-weight:900;font-size:40px;margin:0 0 4px;letter-spacing:-1px}
 .panel h2{font-weight:900;font-size:24px;margin:0 0 6px}
 .panel p{color:var(--sub);margin:4px 0 14px;font-size:14px}
@@ -88,7 +88,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
   #touch button{width:52px;height:52px}
   #banner b{font-size:24px}
   #hint{display:none}
-  .card{width:100%;min-height:0}
+  .card{width:100%;min-height:0;padding:26px 12px 24px}
+  #heroCards .card canvas{width:60px;height:auto;float:left;margin:0 12px 0 0}
+  .panel{padding:16px}
   .panel h1{font-size:30px}
   #skills{bottom:14px;left:10px;gap:5px}
   #prompt{bottom:190px}

@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>꿈지기 기사 아트 시안</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#120f1d;--panel:rgba(34,27,60,.88);--line:rgba(255,255,255,.08);--text:#f4f1ff;--sub:#a9a3c4;--gold:#ffd23a}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#3a2a78 0%,#120f1d 60%) fixed,#120f1d;color:var(--text);font-family:'Noto Sans KR',system-ui,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:28px 16px 80px}
+h1{font-weight:900;font-size:30px;margin:0 0 4px}
+h2{font-weight:900;font-size:21px;margin:44px 0 6px}
+h2 small{font-weight:700;font-size:13px;color:var(--sub);margin-left:8px}
+p.lead{color:var(--sub);margin:0 0 10px;line-height:1.6}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.row{display:flex;flex-wrap:wrap;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:120px}
+.card b{font-size:14px}
+.card span{font-size:11px;color:var(--sub);text-align:center;line-height:1.4}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.hero h3{margin:0 0 10px;font-size:16px}
+.hero .row .card{background:rgba(255,255,255,.04)}
+.zone{margin-top:14px}
+.zone h3{font-size:15px;margin:0 0 8px}
+.scene{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-top:10px}
+.scene canvas{width:100%;height:auto}
+.scene .cap{position:absolute;left:12px;bottom:10px;font-weight:900;font-size:13px;text-shadow:0 1px 0 #120f1d,0 0 6px #120f1d}
+.hud{position:absolute;inset:0;pointer-events:none;font-weight:700;font-size:clamp(9px,1.3vw,13px)}
+.hud .tl{position:absolute;left:2%;top:3%;width:26%}
+.bar{height:clamp(6px,1vw,10px);border-radius:6px;background:rgba(18,15,29,.7);overflow:hidden;margin-bottom:4px;border:1px solid rgba(255,255,255,.15)}
+.bar i{display:block;height:100%}
+.hud .tc{position:absolute;left:0;right:0;top:3%;text-align:center;text-shadow:0 1px 0 #120f1d}
+.hud .tc b{display:block;font-size:1.5em;font-weight:900}
+.hud .bl{position:absolute;left:2%;bottom:5%;display:flex;gap:6px}
+.slot{width:clamp(30px,5vw,48px);height:clamp(30px,5vw,48px);border-radius:10px;background:rgba(18,15,29,.78);border:2px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:.8em;color:var(--sub)}
+.slot.on{border-color:#ff7a3a;color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 0}
+.chip{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.2)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px;background:var(--panel);border-radius:12px;overflow:hidden}
+td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--sub);font-weight:700}
+td.dim{color:var(--sub)}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;background:rgba(255,210,58,.15);color:var(--gold);margin-left:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>꿈지기 기사 · 아트 시안 v1</h1>
+<p class="lead">컨셉 A "꿈나라 악몽 사냥". 밤의 꿈 세계를 지키는 가면 쓴 꼬마 기사가 몰려드는 악몽을 쓸어내요.<br>
+톤: 보라빛 밤 + 저해상도 픽셀. 세계는 블록 지형(3D), 생물·식생은 2D 픽셀 스프라이트(빌보드). 그림은 전부 코드로 찍었어요(외부 이미지 없음).</p>
+
+<h2>1. 주인공 <small>영웅 3명 = 망토 색이 다른 꿈지기 기사 · 각성 3단계 · 뒷모습(실제 게임 시점)</small></h2>
+<div id="heroes"></div>
+
+<h2>2. 몬스터 <small>귀엽지만 살짝 으스스한 악몽 생물 · 항상 플레이어 쪽을 봄</small></h2>
+<div class="row" id="mobs"></div>
+<table id="mobtable"></table>
+
+<h2>3. 식생 <small>구역마다 다른 나무·소품</small></h2>
+<div id="flora"></div>
+
+<h2>4. 배경 <small>게임 시점(캐릭터 등 뒤 위) 모의 화면 · 320×180으로 찍고 확대</small></h2>
+<div id="scenes"></div>
+</main>
+
+<script>
+// ---------- pixel kit ----------
+const OUT = '#140f2a';
+const G = '#ffd23a';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hexCache = new Map();
+function hex(c) {
+  let v = hexCache.get(c);
+  if (!v) { const n = parseInt(c.slice(1), 16); v = [n >> 16 & 255, n >> 8 & 255, n & 255]; hexCache.set(c, v); }
+  return v;
+}
+function toHex(r, g, b) { return '#' + [r, g, b].map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join(''); }
+function shade(c, k) { const [r, g, b] = hex(c); return toHex(r * k, g * k, b * k); }
+function mixC(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+
+class Spr {
+  constructor(w, h) { this.w = w + 2; this.h = h + 2; this.p = new Array(this.w * this.h).fill(null); }
+  raw(x, y) { return (x < 0 || y < 0 || x >= this.w || y >= this.h) ? null : this.p[y * this.w + x]; }
+  set(x, y, c) { x = Math.floor(x) + 1; y = Math.floor(y) + 1; if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.p[y * this.w + x] = c; }
+  rect(x, y, w, h, c) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c); }
+  ell(cx, cy, rx, ry, c, sh = 0) {
+    const hi = shade(c, 1.2), lo = shade(c, 0.72);
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        const dx = (x + .5 - cx) / rx, dy = (y + .5 - cy) / ry;
+        if (dx * dx + dy * dy > 1) continue;
+        let col = c;
+        if (sh) { const l = -(dx * .55 + dy * .85); col = l > .5 ? hi : l < -.42 ? lo : c; }
+        this.set(x, y, col);
+      }
+  }
+  moon(cx, cy, r, ox, oy, r2, c) {
+    for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+      for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+        const a = (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2, b = (x + .5 - cx - ox) ** 2 + (y + .5 - cy - oy) ** 2;
+        if (a <= r * r && b > r2 * r2) this.set(x, y, c);
+      }
+  }
+  poly(pts, c) {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    for (let y = Math.floor(y0); y <= Math.ceil(y1); y++)
+      for (let x = Math.floor(x0); x <= Math.ceil(x1); x++) {
+        const px = x + .5, py = y + .5; let ins = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+          const [xi, yi] = pts[i], [xj, yj] = pts[j];
+          if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) ins = !ins;
+        }
+        if (ins) this.set(x, y, c);
+      }
+  }
+  line(x0, y0, x1, y1, c) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let e = dx + dy;
+    for (;;) { this.set(x0, y0, c); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+  }
+  star(x, y, c, big) {
+    this.set(x, y, '#ffffff'); this.set(x - 1, y, c); this.set(x + 1, y, c); this.set(x, y - 1, c); this.set(x, y + 1, c);
+    if (big) { this.set(x - 2, y, c); this.set(x + 2, y, c); this.set(x, y - 2, c); this.set(x, y + 2, c); }
+  }
+  outline(c) {
+    const add = [];
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+      if (this.raw(x, y)) continue;
+      if (this.raw(x - 1, y) || this.raw(x + 1, y) || this.raw(x, y - 1) || this.raw(x, y + 1)) add.push(y * this.w + x);
+    }
+    add.forEach(i => this.p[i] = c);
+  }
+  canvas() {
+    const cv = document.createElement('canvas'); cv.width = this.w; cv.height = this.h;
+    const ctx = cv.getContext('2d'), id = ctx.createImageData(this.w, this.h);
+    this.p.forEach((v, i) => { if (v) { const [r, g, b] = hex(v); id.data[i * 4] = r; id.data[i * 4 + 1] = g; id.data[i * 4 + 2] = b; id.data[i * 4 + 3] = 255; } });
+    ctx.putImageData(id, 0, 0); return cv;
+  }
+}
+function mk(w, h, fn) { const s = new Spr(w, h); fn(s); s.outline(OUT); return s.canvas(); }
+// 프레임 2장짜리 스프라이트: [f0, f1]
+const anim = fn => [fn(0), fn(1)];
+
+// ---------- 주인공 ----------
+const HEROES = [
+  { id: 'pyro', cape: '#ff7a3a', eye: '#ffc070', names: ['불씨 꿈지기', '촛불 기사', '태양 기사'], el: '화염 · HP 95 · 상태이상 피해 +25%' },
+  { id: 'tide', cape: '#4aa8ff', eye: '#a6deff', names: ['이슬 꿈지기', '물결 기사', '밀물 기사'], el: '물 · HP 120 · 방어력 +6' },
+  { id: 'grove', cape: '#6ad04a', eye: '#c0ff90', names: ['새싹 꿈지기', '숲 기사', '고목 기사'], el: '숲 · HP 105 · HP 재생 +0.6/s' },
+];
+const KB = '#3b2f73', KF = '#211a46', MASK = '#f3e9cf', BLADE = '#dfe3f5';
+
+function capePts(stage, b, back) {
+  const t = back ? 13 : 14;
+  if (stage >= 2) return [[8, t + b], [24, t + b], [31, 22], [28, 30], [22, 27], [16, 31], [10, 27], [4, 30], [1, 22]];
+  return [[8, t + b], [24, t + b], [28, 29], [22, 27], [16, 30], [10, 27], [4, 29]];
+}
+function crest(s, stage, b, eye) {
+  const r = stage >= 2 ? 6 : 5;
+  s.moon(16, 8 + b - (stage >= 2 ? 1 : 0), r, 2.2, -1.6, r - .8, G);
+  if (stage >= 1) s.star(21, 3 + b, eye);
+  if (stage >= 2) { s.star(6, 6 + b, eye); s.star(27, 9 + b, eye); }
+}
+function knight(h, stage, f) {
+  return mk(32, 34, s => {
+    const b = f;
+    s.poly(capePts(stage, b, false), shade(h.cape, .78));
+    s.ell(11, 30 - (f ? 0 : 1), 4, 2.4, KF, 0);
+    s.ell(21, 30 - (f ? 1 : 0), 4, 2.4, KF, 0);
+    s.ell(16, 19 + b, 9, 8.5, KB, 1);
+    s.ell(16, 18 + b, 6.5, 5.2, MASK, 1);
+    s.ell(13.5, 18 + b, 1.3, 2, h.eye); s.ell(18.5, 18 + b, 1.3, 2, h.eye);
+    s.set(13, 17 + b, '#ffffff'); s.set(18, 17 + b, '#ffffff');
+    if (stage >= 1) s.rect(9, 24 + b, 14, 1, G);
+    crest(s, stage, b, h.eye);
+    s.ell(7.5, 22 + b, 2, 2, KB); s.ell(24.5, 22 + b, 2, 2, KB);
+    s.line(25, 21 + b, 30, 11 + b, BLADE); s.line(23, 20 + b, 27, 22 + b, G);
+    s.star(30, 10 + b, h.eye);
+  });
+}
+function knightBack(h, stage, f) {
+  return mk(32, 34, s => {
+    const b = f;
+    s.ell(11, 30 - (f ? 0 : 1), 4, 2.4, KF, 0);
+    s.ell(21, 30 - (f ? 1 : 0), 4, 2.4, KF, 0);
+    s.ell(16, 19 + b, 9, 8.5, KB, 1);
+    const cp = stage >= 2
+      ? [[10, 17 + b], [22, 17 + b], [30, 24], [26, 30], [21, 28], [16, 31], [11, 28], [6, 30], [2, 24]]
+      : [[10, 17 + b], [22, 17 + b], [25, 29], [21, 27], [16, 30], [11, 27], [7, 29]];
+    s.poly(cp, h.cape);
+    s.poly([[10, 18 + b], [13, 18 + b], [12, 27], [8, 28]], shade(h.cape, 1.18));
+    s.poly([[19, 18 + b], [22, 18 + b], [24, 28], [20, 27]], shade(h.cape, .8));
+    s.rect(10, 16 + b, 12, 1, G); s.rect(15, 17 + b, 2, 1, G);
+    crest(s, stage, b, h.eye);
+    s.ell(7.5, 21 + b, 2, 2, KB); s.ell(24.5, 21 + b, 2, 2, KB);
+    s.line(25, 20 + b, 29, 9 + b, BLADE); s.star(29, 8 + b, h.eye);
+  });
+}
+
+// ---------- 몬스터 ----------
+const D = '#2d2840';
+const sheep = anim(f => mk(24, 23, s => {
+  const b = f;
+  s.rect(8, 19, 2, 3, D); s.rect(14, 19 + (f ? 0 : -1), 2, 3, D);
+  [[12, 13, 8, 6.5], [6, 11, 4, 4], [18, 11, 4, 4], [12, 6.5, 5, 3.5], [7, 16, 4, 3.5], [17, 16, 4, 3.5], [9, 7.5, 3.5, 3], [15, 7.5, 3.5, 3]]
+    .forEach(([x, y, rx, ry]) => s.ell(x, y + b, rx, ry, '#efeaf8', 1));
+  s.ell(12, 13 + b, 4, 4.5, '#3d3658', 1);
+  s.ell(7.5, 12 + b, 2, 1.2, '#3d3658'); s.ell(16.5, 12 + b, 2, 1.2, '#3d3658');
+  s.rect(9, 13 + b, 2, 1, '#d8d0ff'); s.rect(13, 13 + b, 2, 1, '#d8d0ff');
+  s.rect(11, 15 + b, 2, 1, '#ff9ac0');
+}));
+const ember = anim(f => mk(24, 21, s => {
+  const wy = f ? -2 : 2;
+  s.poly([[9, 11], [1, 7 + wy], [3, 12], [0, 15 + wy / 2], [9, 15]], '#8a3a2a');
+  s.poly([[15, 11], [23, 7 + wy], [21, 12], [24, 15 + wy / 2], [15, 15]], '#8a3a2a');
+  s.ell(12, 13, 5.5, 5, '#ff7a3a', 1);
+  s.poly([[9.5, 9], [14.5, 9], [12, 1 + f]], G); s.poly([[11, 9], [13, 9], [12, 4 + f]], '#fff6c0');
+  s.rect(9, 12, 2, 2, '#ffffff'); s.set(10, 13, '#1a1030'); s.rect(13, 12, 2, 2, '#ffffff'); s.set(13, 13, '#1a1030');
+  s.set(11, 16, '#ffffff'); s.set(13, 16, '#ffffff');
+  s.rect(9, 17, 1, 2, '#ffb07a'); s.rect(14, 17, 1, 3, '#ffb07a');
+}));
+const tear = anim(f => mk(24, 23, s => {
+  s.poly([[7, 13], [17, 13], [12, 2 + f]], '#4aa8ff');
+  s.ell(12, 15 + f * .5, 7 + f * .6, 6.5 - f * .6, '#4aa8ff', 1);
+  s.set(9, 8, '#d6f0ff'); s.set(9, 9, '#d6f0ff'); s.set(8, 11, '#d6f0ff');
+  s.ell(9.5, 16, 1.6, 2.1, '#ffffff'); s.ell(14.5, 16, 1.6, 2.1, '#ffffff');
+  s.rect(9, 16, 2, 2, '#14204a'); s.rect(14, 16, 2, 2, '#14204a');
+  s.set(8, 13, '#1b3a7a'); s.set(9, 13, '#1b3a7a'); s.set(10, 12, '#1b3a7a');
+  s.set(14, 12, '#1b3a7a'); s.set(15, 13, '#1b3a7a'); s.set(16, 13, '#1b3a7a');
+  s.rect(11, 20, 2, 1, '#1b3a7a');
+}));
+const firefly = anim(f => mk(24, 22, s => {
+  const wv = f;
+  s.ell(6, 9 - wv, 4.5, 2.6, '#d6ecff'); s.ell(18, 9 - wv, 4.5, 2.6, '#d6ecff');
+  s.ell(12, 16, 5.5, 5.5, G, 1);
+  s.rect(7, 15, 11, 1, '#c48a12'); s.rect(8, 18, 9, 1, '#c48a12');
+  s.ell(12, 9, 4, 3.5, '#3b3458', 1);
+  s.rect(10, 8, 1, 2, '#ffffff'); s.rect(13, 8, 1, 2, '#ffffff');
+  s.line(10, 6, 8, 2, '#3b3458'); s.line(14, 6, 16, 2, '#3b3458');
+  s.set(8, 1, G); s.set(16, 1, G);
+  if (f) { s.set(20, 19, '#fff6a0'); s.set(21, 18, '#fff6a0'); s.set(3, 18, '#fff6a0'); }
+}));
+const jelly = anim(f => mk(24, 22, s => {
+  s.ell(12, 13 + f * .5, 8.5 + f * .5, 7 - f * .5, '#b05ad8', 1);
+  s.rect(6, 17, 2, 3, '#8c3fb3'); s.rect(16, 18, 2, 3, '#8c3fb3');
+  s.set(15, 9, '#d9a0ff'); s.set(8, 9, '#e6c0ff'); s.set(9, 9, '#e6c0ff');
+  s.rect(8, 11, 3, 2, '#ffffff'); s.rect(13, 11, 3, 2, '#ffffff');
+  s.set(9, 12, '#1a0a28'); s.set(14, 12, '#1a0a28');
+  s.line(7, 9, 10, 10, '#3a1050'); s.line(17, 9, 14, 10, '#3a1050');
+  s.rect(8, 15, 9, 2, '#3a1050');
+  for (let i = 0; i < 9; i++) s.set(8 + i, 15 + (i % 2), '#ffffff');
+}));
+const pillow = anim(f => mk(24, 20, s => {
+  const o = f;
+  s.rect(3, 6 + o, 18, 11, '#6ad04a'); s.rect(4, 6 + o, 16, 2, '#8fe070'); s.rect(4, 15 + o, 16, 2, '#4fa83a');
+  [[3, 6], [20, 6], [3, 16], [20, 16]].forEach(([x, y]) => s.ell(x + .5, y + .5 + o, 2, 2, '#4fa83a'));
+  [[6, 9], [16, 10], [11, 7], [18, 13]].forEach(([x, y]) => s.set(x, y + o, '#3f8a2f'));
+  s.set(7, 11 + o, '#1f3a1a'); s.set(8, 12 + o, '#1f3a1a'); s.set(9, 11 + o, '#1f3a1a');
+  s.set(14, 11 + o, '#1f3a1a'); s.set(15, 12 + o, '#1f3a1a'); s.set(16, 11 + o, '#1f3a1a');
+  s.set(11, 14 + o, '#1f3a1a'); s.set(12, 14 + o, '#1f3a1a'); s.set(13, 15 + o, '#9ad8ff');
+}));
+const wolf = anim(f => mk(28, 25, s => {
+  const C = '#5b74b8', Dk = '#36488a', L = '#dff2ff';
+  s.rect(8, 19, 3, 5 - f, Dk); s.rect(17, 19, 3, 4 + f, Dk);
+  s.poly([[5, 15], [2, 9], [8, 12]], L); s.poly([[23, 15], [26, 9], [20, 12]], L);
+  s.ell(14, 17, 8, 6, C, 1); s.ell(14, 19, 4, 3.5, L);
+  s.ell(14, 10, 7, 6, C, 1);
+  s.poly([[7, 8], [9, 1], [12, 6]], C); s.poly([[16, 6], [19, 1], [21, 8]], C);
+  s.poly([[8.5, 7], [9.5, 3], [11, 6]], Dk); s.poly([[17, 6], [18.5, 3], [19.5, 7]], Dk);
+  s.ell(14, 13, 3.5, 2.5, L); s.rect(13, 12, 2, 1, '#1a2040');
+  s.line(9, 8, 12, 9, '#2a3a70'); s.line(19, 8, 16, 9, '#2a3a70');
+  s.rect(10, 9, 2, 2, '#9ff6ff'); s.rect(16, 9, 2, 2, '#9ff6ff');
+}));
+const soldier = anim(f => mk(22, 29, s => {
+  s.rect(7, 23, 3, f ? 5 : 4, '#2a2440'); s.rect(12, 23, 3, f ? 4 : 5, '#2a2440');
+  s.rect(17, 9, 4, 1, '#b8bccc'); s.rect(20, 7, 1, 5, '#b8bccc');
+  s.rect(5, 13, 12, 10, '#d0603a'); s.rect(5, 13, 2, 10, '#e88a5a'); s.rect(15, 13, 2, 10, '#a8442a');
+  s.rect(5, 19, 12, 1, '#2a2440'); s.set(11, 15, G); s.set(11, 17, G);
+  s.rect(2, 13 + f, 3, 8, '#d0603a'); s.rect(17, 14 - f, 3, 8, '#a8442a');
+  s.rect(2, 21 + f, 3, 2, '#f0c8a0'); s.rect(17, 22 - f, 3, 2, '#f0c8a0');
+  s.ell(11, 9, 5, 4.5, '#f2cfa8', 1);
+  s.set(7, 10, '#ff8a8a'); s.set(15, 10, '#ff8a8a');
+  s.set(9, 9, '#1a1030'); s.set(13, 9, '#1a1030'); s.rect(9, 11, 5, 1, '#4a2a1a');
+  s.rect(6, 0, 10, 6, '#2a2440'); s.rect(5, 5, 12, 1, '#2a2440'); s.set(11, 2, G); s.set(11, 3, G);
+}));
+const owl = anim(f => mk(24, 25, s => {
+  s.ell(4.5, 16, 2.5, 6, '#d94a90'); s.ell(19.5, 16, 2.5, 6, '#d94a90');
+  s.ell(12, 15, 8.5, 9, '#ff6ab0', 1);
+  s.poly([[4, 8], [5, 1], [9, 6]], '#d94a90'); s.poly([[15, 6], [19, 1], [20, 8]], '#d94a90');
+  s.ell(8.5, 11, 3, 3, '#ffffff'); s.ell(15.5, 11, 3, 3, '#ffffff');
+  if (f) { s.rect(6, 11, 6, 1, '#2a1030'); s.rect(13, 11, 6, 1, '#2a1030'); }
+  else { s.rect(8, 11, 2, 2, '#2a1030'); s.rect(15, 11, 2, 2, '#2a1030'); }
+  s.poly([[11, 13], [13, 13], [12, 15]], G);
+  s.ell(12, 19.5, 4, 3.5, '#fff3d6');
+  s.line(12, 19, 12, 17, '#2a1030'); s.line(12, 19, 14, 19, '#2a1030');
+  s.rect(9, 24, 2, 1, G); s.rect(13, 24, 2, 1, G);
+}));
+const boss = anim(f => mk(52, 48, s => {
+  const G1 = '#3f8a4a', G3 = '#2c6638';
+  s.ell(15, 44, 6, 3, G3); s.ell(37, 44, 6, 3, G3);
+  s.ell(5, 30 - f, 4, 9, G1, 1); s.ell(47, 30 - f, 4, 9, G1, 1);
+  s.ell(26, 30, 20, 15, G1, 1);
+  s.rect(12, 26, 8, 7, '#7a5cc8'); s.rect(30, 32, 9, 6, '#d98ab0'); s.rect(20, 37, 7, 5, '#e0c070'); s.rect(34, 22, 6, 6, '#5a9adf');
+  [[12, 26, 8, 7], [30, 32, 9, 6], [20, 37, 7, 5], [34, 22, 6, 6]].forEach(([x, y, w, h]) => {
+    for (let i = 0; i < w; i += 2) { s.set(x + i, y, '#f4f1ff'); s.set(x + i, y + h - 1, '#f4f1ff'); }
+  });
+  s.ell(26, 15 + f, 12, 10, G1, 1);
+  s.poly([[15, 9 + f], [37, 9 + f], [46, 1]], '#7a5cc8'); s.ell(46.5, 2, 2.5, 2.5, '#ffffff');
+  s.rect(14, 8 + f, 24, 2, '#ffffff');
+  s.ell(21, 16 + f, 2.5, 1.5, '#ffe66a'); s.ell(31, 16 + f, 2.5, 1.5, '#ffe66a');
+  s.line(18, 13 + f, 23, 14 + f, G3); s.line(34, 13 + f, 29, 14 + f, G3);
+  s.rect(22, 21 + f, 8, 1, G3);
+  [[10, 40], [42, 38], [26, 44]].forEach(([x, y]) => s.rect(x, y, 1, 3, '#6ad04a'));
+  [[14, 20], [38, 28], [9, 34], [24, 25]].forEach(([x, y]) => s.set(x, y, '#8fe070'));
+}));
+
+// ---------- 식생 ----------
+const candyTree = mk(34, 44, s => {
+  s.rect(15, 24, 4, 18, '#7a5a8a'); s.rect(15, 24, 1, 18, '#9a7aaa'); s.line(17, 30, 11, 24, '#7a5a8a');
+  s.ell(10, 22, 7, 5.5, '#d9b3ff', 1); s.ell(24, 21, 7, 5.5, '#ffb3d9', 1);
+  s.ell(17, 13, 10, 8, '#ffb3d9', 1); s.ell(10, 10, 5, 4.5, '#d9b3ff', 1); s.ell(24, 9, 5, 4.5, '#d9b3ff', 1);
+  s.set(14, 9, '#ffffff'); s.set(22, 17, '#ffffff'); s.set(8, 20, '#ffffff'); s.set(26, 8, '#ffffff');
+});
+const mushLamp = mk(20, 23, s => {
+  s.rect(8, 11, 4, 11, '#f0e6d8'); s.rect(8, 11, 1, 11, '#ffffff');
+  s.ell(10, 9, 9, 5.5, '#7b5cff', 1); s.rect(4, 13, 12, 1, '#4a2aa8');
+  s.ell(6.5, 7, 1.3, 1.3, '#c8f0ff'); s.ell(13, 6, 1.6, 1.6, '#c8f0ff'); s.set(10, 10, '#c8f0ff'); s.set(16, 9, '#c8f0ff');
+});
+const moonBush = mk(26, 16, s => {
+  s.ell(13, 10, 11, 6, '#2f7a5a', 1); s.ell(7, 9, 5, 4, '#3f9a6a', 1); s.ell(19, 8, 5, 4, '#3f9a6a', 1);
+  [[6, 6], [12, 5], [18, 6], [15, 10], [9, 11], [21, 10]].forEach(([x, y]) => {
+    s.set(x - 1, y, '#ffffff'); s.set(x + 1, y, '#ffffff'); s.set(x, y - 1, '#ffffff'); s.set(x, y + 1, '#ffffff'); s.set(x, y, '#ffe66a');
+  });
+});
+const hourCactus = mk(20, 34, s => {
+  s.ell(10, 9, 6.5, 7.5, '#5aa84a', 1); s.rect(8, 15, 4, 4, '#4a9040'); s.ell(10, 25, 7, 8, '#5aa84a', 1);
+  s.rect(10, 3, 1, 11, '#3f8035'); s.rect(10, 20, 1, 11, '#3f8035'); s.rect(7, 5, 1, 8, '#4a9040'); s.rect(7, 21, 1, 9, '#4a9040');
+  s.rect(10, 15, 1, 4, '#ffe0a0');
+  s.rect(6, 14, 8, 1, '#d9a44a'); s.rect(6, 19, 8, 1, '#d9a44a');
+  [[4, 8], [16, 10], [3, 24], [17, 22], [14, 28]].forEach(([x, y]) => s.set(x, y, '#fff6d0'));
+  s.ell(10, 1.5, 2, 1.5, '#ff8ac0');
+});
+const clockRock = mk(30, 18, s => {
+  s.ell(15, 12, 14, 6, '#d9b07a', 1); s.rect(3, 12, 24, 1, '#c0965f'); s.rect(5, 15, 20, 1, '#c0965f');
+  s.ell(15, 8, 6, 4.5, '#fff3d6', 1); s.poly([[17, 10], [22, 9], [21, 16]], '#fff3d6');
+  s.line(15, 8, 15, 5, '#2a1030'); s.line(15, 8, 18, 9, '#2a1030');
+  s.set(15, 4, G); s.set(10, 8, G); s.set(20, 8, G);
+});
+const starFir = mk(26, 44, s => {
+  s.rect(12, 36, 3, 7, '#5a3a2a');
+  [[16, 36, 11], [9, 26, 8], [4, 16, 5]].forEach(([y0, y1, w]) => {
+    s.poly([[13, y0], [13 - w, y1], [13 + w + 1, y1]], '#1f5a5a');
+    s.poly([[13, y0], [13 - w * .45, y0 + (y1 - y0) * .45], [13 + w * .45 + 1, y0 + (y1 - y0) * .45]], '#2f7a74');
+    s.rect(13 - w + 1, y1 - 1, 2 * w, 1, '#eef4ff');
+  });
+  s.rect(11, 4, 5, 2, '#eef4ff');
+  s.star(13, 2, G, true);
+});
+const iceCrystal = mk(17, 26, s => {
+  s.poly([[13, 10], [16.5, 15], [13, 22], [11, 15]], '#6fc8f0');
+  s.poly([[8, 0], [14, 12], [8, 25], [2, 12]], '#9ae8ff'); s.poly([[8, 0], [8, 25], [2, 12]], '#c8f6ff');
+  s.set(6, 7, '#ffffff'); s.set(5, 9, '#ffffff');
+});
+const snowman = mk(18, 24, s => {
+  s.ell(9, 17, 7, 6, '#eef4ff', 1); s.ell(9, 8, 5, 4.5, '#eef4ff', 1);
+  s.poly([[4, 5], [14, 5], [16, 0]], '#4aa8ff'); s.ell(16.5, 0.5, 1.5, 1.5, '#ffffff'); s.rect(4, 4, 10, 2, '#ffffff');
+  s.rect(6, 8, 2, 1, '#2a2440'); s.rect(11, 8, 2, 1, '#2a2440'); s.set(9, 10, '#ff9a3a');
+  s.set(9, 15, '#2a2440'); s.set(9, 18, '#2a2440');
+});
+const shard = mk(8, 8, s => { s.poly([[4, 0], [7.5, 4], [4, 8], [.5, 4]], '#ffe66a'); s.poly([[4, 2], [5.5, 4], [4, 6], [2.5, 4]], '#ffffff'); });
+
+// ---------- 표시 helpers ----------
+const animated = [];
+function view(frames, scale) {
+  const fr = Array.isArray(frames) ? frames : [frames];
+  const c = document.createElement('canvas'); c.width = fr[0].width * scale; c.height = fr[0].height * scale;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  const draw = f => { x.clearRect(0, 0, c.width, c.height); x.drawImage(fr[f % fr.length], 0, 0, c.width, c.height); };
+  draw(0); if (fr.length > 1) animated.push(draw);
+  return c;
+}
+function card(frames, scale, name, note) {
+  const d = document.createElement('div'); d.className = 'card';
+  d.append(view(frames, scale));
+  const b = document.createElement('b'); b.textContent = name; d.append(b);
+  if (note) { const s = document.createElement('span'); s.innerHTML = note; d.append(s); }
+  return d;
+}
+
+// 주인공
+const heroesEl = document.getElementById('heroes');
+HEROES.forEach(h => {
+  const box = document.createElement('div'); box.className = 'hero';
+  box.innerHTML = `<h3 style="color:${h.cape}">${h.names[0]} <span style="color:var(--sub);font-weight:400;font-size:13px">${h.el}</span></h3>`;
+  const row = document.createElement('div'); row.className = 'row';
+  h.names.forEach((n, st) => row.append(card(anim(f => knight(h, st, f)), 4, n, ['기본', '각성 1 · Lv16', '각성 2 · Lv32'][st])));
+  row.append(card(anim(f => knightBack(h, 0, f)), 4, '뒷모습', '플레이 중 시점'));
+  row.append(card(anim(f => knightBack(h, 2, f)), 4, '뒷모습 · 각성 2', ''));
+  box.append(row); heroesEl.append(box);
+});
+
+// 몬스터
+const MOBS = [
+  [sheep, '잠 못 든 양', '중립 · 등급 0'], [pillow, '이끼 베개', '숲 · 등급 0'], [ember, '촛농 박쥐', '화염 · 등급 0'],
+  [tear, '눈물 방울', '물 · 등급 0'], [firefly, '찌릿 반딧불', '번개 · 등급 0'], [jelly, '악몽 젤리', '독 · 등급 0'],
+  [wolf, '서리 그림자 늑대', '서리 · 등급 1'], [soldier, '태엽 병정', '대지 · 등급 1'], [owl, '시계 부엉이', '비전 · 등급 1'],
+];
+const mobsEl = document.getElementById('mobs');
+MOBS.forEach(([fr, n, note]) => mobsEl.append(card(fr, 4, n, note)));
+mobsEl.append(card(boss, 3, '이끼 이불 거인', '구역 1 수호자 · 숲'));
+
+const MAP = [
+  ['wool_cube', '양털 큐브', '잠 못 든 양', 1], ['moss_jelly', '이끼 젤리', '이끼 베개', 1], ['ember_bat', '불씨 박쥐', '촛농 박쥐', 1],
+  ['water_jelly', '물 젤리', '눈물 방울', 1], ['zap_bee', '찌릿 벌', '찌릿 반딧불', 1], ['venom_jelly', '독 젤리', '악몽 젤리', 1],
+  ['frost_wolf', '서리 늑대', '서리 그림자 늑대', 1], ['stone_golem', '돌주먹 골렘', '태엽 병정', 1], ['arcane_owl', '비전 부엉이', '시계 부엉이', 1],
+  ['thorn_boar', '가시 멧돼지', '가시 인형 멧돼지', 0], ['lava_lion', '용암 사자', '촛불 사자', 0], ['coral_turtle', '산호 거북', '이불 거북', 0],
+  ['storm_hawk', '폭풍 매', '번개 연', 0], ['giant_venom_jelly', '거대 독 젤리', '왕 악몽 젤리', 0],
+  ['boss 1', '이끼 거인 모스가드', '이끼 이불 거인', 1], ['boss 2', '용암 맹수 이그너스', '녹은 촛대 맹수', 0], ['boss 3', '뇌운 와이번 볼테르', '뇌운 꿈먹이 맥', 0],
+];
+document.getElementById('mobtable').innerHTML = '<tr><th>기획서 id</th><th>기획서 이름</th><th>꿈지기 버전</th></tr>' +
+  MAP.map(([id, a, b, done]) => `<tr><td class="dim">${id}</td><td class="dim">${a}</td><td>${b}${done ? '' : '<span class="tag">시안 승인 후 도안</span>'}</td></tr>`).join('');
+
+// 식생
+const FLORA = [
+  ['구역 1 · 꿈 들판', [[candyTree, '솜사탕 나무', '참나무 대신'], [mushLamp, '버섯 등불', '빛나는 소품'], [moonBush, '달맞이 덤불', '산딸기 덤불 대신']]],
+  ['구역 2 · 모래시계 사막', [[hourCactus, '모래시계 선인장', '선인장 대신 · 모래가 흘러내림'], [clockRock, '녹은 시계 바위', '사막 소품']]],
+  ['구역 3 · 별 내리는 눈숲', [[starFir, '별 전나무', '가문비나무 대신'], [iceCrystal, '얼음 수정', '눈숲 소품'], [snowman, '잠자는 눈사람', '눈숲 소품']]],
+];
+const floraEl = document.getElementById('flora');
+FLORA.forEach(([zn, items]) => {
+  const z = document.createElement('div'); z.className = 'zone';
+  z.innerHTML = `<h3>${zn}</h3>`;
+  const row = document.createElement('div'); row.className = 'row';
+  items.forEach(([cv, n, note]) => row.append(card(cv, 4, n, note)));
+  if (zn.startsWith('구역 1')) row.append(card(shard, 6, '꿈 조각', '경험치 큐브 대신'));
+  z.append(row); floraEl.append(z);
+});
+
+
+// ---------- 배경 장면 ----------
+// 복셀 스페이스 방식: 화면 열마다 앞에서 뒤로 지형을 훑어 윗면·옆면을 칠하고 깊이 버퍼를 남긴다.
+// 스프라이트는 그 깊이 버퍼로 가려짐을 판정해 고원 뒤로 숨는다.
+const W = 320, H = 180, HZ = 70, F = 170, CAMH = 3.4;
+function h2(x, y) { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+function h4(a, b, c, d) { const n = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719 + d * 91.97) * 43758.5453; return n - Math.floor(n); }
+function vn(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), sm = t => t * t * (3 - 2 * t), u = sm(x - xi), v = sm(y - yi);
+  const a = h2(xi, yi), b = h2(xi + 1, yi), c = h2(xi, yi + 1), d = h2(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const edge = (tx, tz) => (tx === 0 || tz === 0) ? .86 : 1;
+
+const SCENES = [
+  {
+    name: '구역 1 · 꿈 들판 (밤)', sky: ['#171244', '#7558cc'], fog: '#7a5fcf', tint: [.72, .8, 1], hills: '#3a2a86', seed: 3, water: .72,
+    plats: [[-10, 20, 4.5, 2], [11, 25, 5, 3], [-1, 36, 6, 4]],
+    top(bx, bz, tx, tz, r) {
+      if (r > .994) return r > .997 ? [255, 160, 205] : [250, 245, 255];
+      const v = (.85 + .22 * r) * (.93 + .1 * h2(bx, bz)) * edge(tx, tz);
+      return [63 * v, 150 * v, 112 * v];
+    },
+    side(ty, tx, r, rim) { const v = .85 + .2 * r; return ty < rim ? [63 * v, 150 * v, 112 * v] : [112 * v, 104 * v, 150 * v]; },
+    waterCol(r) { const v = .9 + .15 * r; return r > .985 ? [220, 230, 255] : [61 * v, 95 * v, 214 * v]; },
+  },
+  {
+    name: '구역 2 · 모래시계 사막 (황금빛 노을)', sky: ['#2c2a7a', '#ffae6e'], fog: '#eaa57a', tint: [1.04, .95, .85], hills: '#c97a6a', seed: 9, water: .8,
+    plats: [[-9, 19, 4, 2], [10, 23, 5, 3], [1, 37, 7, 4]],
+    top(bx, bz, tx, tz, r) {
+      if (r > .994) return [255, 240, 170];
+      const v = (.86 + .2 * r) * (.93 + .1 * h2(bx, bz)) * edge(tx, tz);
+      return [226 * v, 192 * v, 132 * v];
+    },
+    side(ty, tx, r) { const v = (.86 + .16 * r) * (ty % 8 === 0 ? .82 : 1); return [214 * v, 168 * v, 112 * v]; },
+    waterCol(r) { const v = .9 + .15 * r; return [63 * v, 160 * v, 200 * v]; },
+  },
+  {
+    name: '구역 3 · 별 내리는 눈숲 (황혼)', sky: ['#18195a', '#ff9a86'], fog: '#b48cb0', tint: [.86, .84, .98], hills: '#3b3a7a', seed: 5, water: .74,
+    plats: [[-10, 17, 4, 2], [9, 24, 5, 3], [-1, 36, 6, 4]],
+    top(bx, bz, tx, tz, r) {
+      if (r > .992) return [255, 255, 255];
+      const v = (.88 + .16 * r) * (.94 + .08 * h2(bx, bz)) * edge(tx, tz);
+      return [230 * v, 236 * v, 255 * v];
+    },
+    side(ty, tx, r, rim) { const v = .86 + .18 * r; return ty < rim ? [232 * v, 238 * v, 255 * v] : [118 * v, 116 * v, 150 * v]; },
+    waterCol(r, tx, tz) { const v = .92 + .12 * r; return (tx + tz) % 9 === 0 ? [235, 248, 255] : [168 * v, 214 * v, 240 * v]; },
+  },
+];
+
+function terr(Z, bx, bz) {
+  for (const [cx, cz, r, hh] of Z.plats) {
+    if (Math.hypot(bx + .5 - cx, bz + .5 - cz) < r + (vn(bx * .4, bz * .4) - .5) * 2.4) return hh;
+  }
+  if (Math.abs(bx) < 5 && bz < 15) return 0;
+  if (vn(bx * .12 + Z.seed, bz * .12) > Z.water) return -1;
+  return vn(bx * .2 + 7 + Z.seed, bz * .2) > .64 ? 1 : 0;
+}
+const surf = h => h < 0 ? -.15 : h;
+
+function baseScene(Z, zi) {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  const top = hex(Z.sky[0]), bot = hex(Z.sky[1]), fog = hex(Z.fog);
+  let id = x.createImageData(W, H), d = id.data;
+  for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
+    const t = clamp(y / HZ + (BAYER[(y & 3) * 4 + (i & 3)] / 16 - .5) * .06, 0, 1);
+    const c = mixC(top, bot, Math.pow(t, 1.4)), k = (y * W + i) * 4;
+    d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255;
+  }
+  x.putImageData(id, 0, 0);
+  // 하늘 소품
+  if (zi !== 1) for (let i = 0; i < 90; i++) {
+    x.fillStyle = h2(i, 7) > .85 ? '#fff6c0' : 'rgba(255,255,255,.75)';
+    x.fillRect(Math.floor(h2(i, zi) * W), Math.floor(h2(zi, i) * HZ * .7), 1, 1);
+  }
+  const glow = (cx, cy, r, col) => { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2); };
+  const disc = (cx, cy, r, col, cut) => {
+    x.fillStyle = col;
+    for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+      if (xx * xx + yy * yy > r * r) continue;
+      if (cut && (xx - cut[0]) ** 2 + (yy - cut[1]) ** 2 <= cut[2] * cut[2]) continue;
+      x.fillRect(cx + xx, cy + yy, 1, 1);
+    }
+  };
+  if (zi === 0) {
+    glow(244, 30, 40, 'rgba(255,240,200,.3)'); disc(244, 30, 15, '#fff1c8', [7, -5, 13]);
+    [[60, 22, 18], [120, 40, 12], [190, 16, 10]].forEach(([cx, cy, r]) => { x.fillStyle = 'rgba(190,170,255,.28)'; x.fillRect(cx - r, cy, r * 2, 3); x.fillRect(cx - r * .6, cy - 2, r * 1.2, 2); });
+  } else if (zi === 1) {
+    glow(80, HZ - 6, 60, 'rgba(255,220,150,.45)'); disc(80, HZ - 4, 22, '#ffd89a');
+    x.fillStyle = 'rgba(80,50,110,.55)';
+    x.beginPath(); x.moveTo(228, 18); x.lineTo(258, 18); x.lineTo(246, 34); x.lineTo(258, 50); x.lineTo(228, 50); x.lineTo(240, 34); x.closePath(); x.fill();
+    x.fillRect(224, 15, 38, 3); x.fillRect(224, 50, 38, 3);
+    x.fillStyle = 'rgba(255,230,170,.6)'; x.fillRect(242, 34, 2, 14);
+  } else {
+    for (let k = 0; k < 3; k++) for (let i = 0; i < W; i += 2) {
+      const yy = 18 + k * 7 + Math.sin(i / 23 + k * 1.7) * 7 + Math.sin(i / 9 + k) * 2;
+      x.fillStyle = k === 1 ? 'rgba(140,255,210,.16)' : 'rgba(120,220,255,.12)'; x.fillRect(i, yy, 2, 10);
+    }
+  }
+  // 먼 실루엣(불투명, 안개색과 섞어서)
+  const hc = mixC(hex(Z.hills), fog, .45);
+  x.fillStyle = toHex(hc[0], hc[1], hc[2]);
+  for (let i = 0; i < W; i++) { const hgt = zi === 2 ? 4 + vn(i / 30, 3) * 8 : 3 + vn(i / 34, zi) * 12; x.fillRect(i, HZ - hgt, 1, hgt + 2); }
+  if (zi === 2) for (let i = 2; i < W; i += 7) { const hh = 8 + h2(i, 3) * 12; x.beginPath(); x.moveTo(i - 4, HZ + 1); x.lineTo(i, HZ - hh); x.lineTo(i + 4, HZ + 1); x.fill(); }
+
+  // 지형
+  id = x.getImageData(0, 0, W, H); d = id.data;
+  const zb = new Float32Array(W * H).fill(1e9);
+  for (let col = 0; col < W; col++) {
+    let ybuf = H, prevH = 0, pbx = null;
+    for (let z = 1.2; z < 75; z *= 1.016) {
+      const wx = (col - W / 2 + .5) * z / F, wz = z, bx = Math.floor(wx), bz = Math.floor(wz);
+      const h = terr(Z, bx, bz), hh = surf(h), ytop = HZ + (CAMH - hh) * F / z;
+      if (ytop < ybuf) {
+        const yi = Math.max(0, Math.floor(ytop)), yFace = HZ + (CAMH - prevH) * F / z;
+        const xFace = pbx !== null && bx !== pbx;
+        const fogT = Math.pow(clamp((z - 7) / 45, 0, 1), .7);
+        const fx = wx - bx, fz = wz - bz, tx = Math.floor(fx * 16), tz = Math.floor(fz * 16), r = h4(bx, bz, tx, tz);
+        for (let y = yi; y < ybuf; y++) {
+          let c;
+          if (hh > prevH && y < yFace) {
+            const depth = hh - (CAMH - (y - HZ) * z / F), ty = Math.floor(depth * 16), stx = Math.floor((xFace ? fz : fx) * 16);
+            c = Z.side(ty, stx, h4(bx, bz, stx, ty), 3 + Math.floor(h2(bx * 3 + stx, bz) * 3));
+            const k = (xFace ? .64 : .8) * (1 - Math.min(.3, depth / 6 * .3));
+            c = [c[0] * k, c[1] * k, c[2] * k];
+          } else c = h < 0 ? Z.waterCol(r, tx, tz) : Z.top(bx, bz, tx, tz, r);
+          c = mixC([c[0] * Z.tint[0], c[1] * Z.tint[1], c[2] * Z.tint[2]], fog, fogT);
+          const p = y * W + col, k4 = p * 4;
+          d[k4] = c[0]; d[k4 + 1] = c[1]; d[k4 + 2] = c[2]; zb[p] = z;
+        }
+        ybuf = yi;
+      }
+      prevH = hh; pbx = bx;
+    }
+  }
+  return { data: id.data, zb };
+}
+
+// 스프라이트를 확대한 픽셀 캐시
+const scaledCache = new Map();
+let sprIds = 0;
+function scaled(sp, w, h) {
+  if (!sp._id) sp._id = ++sprIds;
+  const key = sp._id + '_' + w + '_' + h;
+  let v = scaledCache.get(key);
+  if (!v) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(sp, 0, 0, w, h);
+    v = x.getImageData(0, 0, w, h).data; scaledCache.set(key, v);
+  }
+  return v;
+}
+function place(Z, wx, wz, lift = 0) {
+  const k = F / wz, gh = Math.max(0, terr(Z, Math.floor(wx), Math.floor(wz)));
+  return [W / 2 + wx * k, HZ + (CAMH - gh - lift) * k, k, HZ + (CAMH - gh) * k];
+}
+function blit(Z, fd, zb, sp, wx, wz, m, lift) {
+  const [sx, top, k, gy] = place(Z, wx, wz, lift);
+  const w = Math.max(1, Math.round(sp.width * k * m / sp.height)), h = Math.max(1, Math.round(k * m));
+  const fogT = Math.pow(clamp((wz - 7) / 45, 0, 1), .7), fog = hex(Z.fog);
+  // 그림자
+  const rx = w * .32, ry = w * .09 + .6;
+  for (let y = Math.floor(gy - ry); y <= Math.ceil(gy + ry); y++) for (let x = Math.floor(sx - rx); x <= Math.ceil(sx + rx); x++) {
+    if (x < 0 || y < 0 || x >= W || y >= H || ((x + .5 - sx) / rx) ** 2 + ((y + .5 - gy) / ry) ** 2 > 1) continue;
+    const p = y * W + x; if (zb[p] < wz - 1.5) continue;
+    const q = p * 4, a = .38 * (1 - fogT); fd[q] += (20 - fd[q]) * a; fd[q + 1] += (15 - fd[q + 1]) * a; fd[q + 2] += (51 - fd[q + 2]) * a;
+  }
+  const px = scaled(sp, w, h), x0 = Math.round(sx - w / 2), y0 = Math.round(top - h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const s = (j * w + i) * 4; if (px[s + 3] < 128) continue;
+    const X = x0 + i, Y = y0 + j; if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+    const p = Y * W + X; if (zb[p] < wz - .3) continue;
+    const c = mixC([px[s], px[s + 1], px[s + 2]], fog, fogT * .85), q = p * 4;
+    fd[q] = c[0]; fd[q + 1] = c[1]; fd[q + 2] = c[2];
+  }
+  return [sx, top - h * .5, w];
+}
+
+const KN = HEROES.map(h => anim(f => knightBack(h, 0, f)));
+const LAMP = 'rgba(160,210,255,.9)', BUG = 'rgba(255,230,120,.8)', ICE = 'rgba(160,230,255,.8)', XP = 'rgba(255,230,120,.9)';
+// [스프라이트, x, z, 높이 m, 띄움 m, 빛]
+const SCENE_OBJS = [
+  [
+    [candyTree, -6, 13, 3.2], [candyTree, 7.5, 17, 3.4], [candyTree, -10, 20, 3.4], [candyTree, 12, 25, 3.6], [candyTree, -14, 29, 3.6], [candyTree, 4, 37, 3.6], [candyTree, -6, 43, 3.8],
+    [mushLamp, -3.4, 8.5, .9, 0, LAMP], [mushLamp, 5.2, 10, 1, 0, LAMP], [mushLamp, 8.6, 20, 1, 0, LAMP],
+    [moonBush, -7, 9.5, .8], [moonBush, 3.5, 22, .8], [boss, -6, 26, 3.8],
+    [sheep, -2.2, 10, .9], [sheep, 1.6, 10.8, .9], [sheep, 3.4, 12.5, .9], [sheep, -.4, 12.8, .9], [sheep, .8, 15.5, .9], [sheep, -3, 16.5, .9],
+    [tear, -4, 11.5, .85], [ember, 2.2, 9.5, .75, .9], [firefly, -1.4, 14, .75, 1.1, BUG], [jelly, 4.8, 13.5, .85], [pillow, -5.6, 14.5, .85],
+    [shard, -.8, 7.6, .3, .15, XP], [shard, .9, 8.1, .3, .15, XP], [shard, .2, 8.9, .3, .15, XP],
+    [KN[0], 0, 6, 1.35],
+  ],
+  [
+    [hourCactus, -6, 12, 2], [hourCactus, 8, 15, 2.4], [hourCactus, -9, 19, 2.2], [hourCactus, 10, 23, 2.4], [hourCactus, 14, 33, 2.4], [hourCactus, -5, 41, 2.6], [hourCactus, 3, 37, 2.4],
+    [clockRock, 4.5, 10, .9], [clockRock, -8, 14, 1.1], [clockRock, 11, 29, 1.1],
+    [soldier, -2.4, 10.5, 1.2], [soldier, 1.8, 11.5, 1.2], [soldier, 3.6, 13.5, 1.2], [owl, -.4, 13.5, 1.1, .2], [ember, 3.2, 9.4, .75, .9],
+    [jelly, -4.2, 12, .85], [sheep, .8, 16, .9], [sheep, -2, 15.5, .9],
+    [shard, -.6, 8, .3, .15, XP], [shard, 1.1, 8.7, .3, .15, XP],
+    [KN[1], 0, 6, 1.35],
+  ],
+  [
+    [starFir, -6, 12, 3.4], [starFir, 7, 14, 3.8], [starFir, -10, 17, 4], [starFir, 9, 24, 4], [starFir, -15, 26, 4], [starFir, 14, 31, 4], [starFir, -1, 36, 4.2], [starFir, -8, 41, 4.2],
+    [iceCrystal, 4.5, 9.5, .9, 0, ICE], [iceCrystal, -8, 22, 1.1, 0, ICE], [snowman, -3.6, 9, 1], [snowman, 10, 19, 1.1],
+    [wolf, -1.8, 10.5, 1.1], [wolf, 2.4, 11.8, 1.1], [wolf, .2, 13.6, 1.1], [wolf, -3.8, 13, 1.1], [owl, 4, 13.2, 1.1, .2], [firefly, 3.2, 9.6, .75, 1, BUG],
+    [KN[2], 0, 6, 1.35],
+  ],
+];
+
+const scenesEl = document.getElementById('scenes');
+const sceneDraws = [];
+SCENES.forEach((Z, zi) => {
+  const base = baseScene(Z, zi);
+  const wrap = document.createElement('div'); wrap.className = 'scene';
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; wrap.append(cv);
+  const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = Z.name; wrap.append(cap);
+  if (zi === 0) {
+    cap.style.left = 'auto'; cap.style.right = '12px';
+    const hud = document.createElement('div'); hud.className = 'hud';
+    hud.innerHTML = `<div class="tl"><div class="bar"><i style="width:72%;background:#5ad87a"></i></div><div class="bar"><i style="width:40%;background:#4aa8ff"></i></div>Lv 7 · 처치 312 · <span style="color:#ffd23a">◆ 45</span><br><span style="color:#ffc070">불씨 꿈지기</span></div>
+      <div class="tc">구역 1/3 · 꿈 들판<b>04:21</b></div>
+      <div class="bl"><div class="slot on">불티</div><div class="slot on">용암</div><div class="slot">+</div><div class="slot">잠김</div></div>`;
+    wrap.append(hud);
+  }
+  scenesEl.append(wrap);
+  const chips = document.createElement('div'); chips.className = 'chips';
+  [Z.sky[0], Z.sky[1], Z.fog, Z.hills].forEach(c => { const i = document.createElement('div'); i.className = 'chip'; i.style.background = c; i.title = c; chips.append(i); });
+  scenesEl.append(chips);
+
+  const objs = SCENE_OBJS[zi].slice().sort((a, b) => b[2] - a[2]);
+  const x = cv.getContext('2d');
+  const frameData = x.createImageData(W, H);
+  sceneDraws.push(f => {
+    frameData.data.set(base.data);
+    const glows = [];
+    for (const [sp, wx, wz, m, lift = 0, gl] of objs) {
+      const fr = Array.isArray(sp) ? sp[(f + Math.round(wx * 3)) & 1] : sp;
+      const at = blit(Z, frameData.data, base.zb, fr, wx, wz, m, lift);
+      if (gl) glows.push([at, gl]);
+    }
+    x.putImageData(frameData, 0, 0);
+    x.globalCompositeOperation = 'lighter';
+    for (const [[gx, gy, w], col] of glows) {
+      const r = Math.max(4, w * 1.3), g = x.createRadialGradient(gx, gy, 0, gx, gy, r);
+      g.addColorStop(0, col.replace(/[\d.]+\)$/, '.35)')); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.fillRect(gx - r, gy - r, r * 2, r * 2);
+    }
+    x.globalCompositeOperation = 'source-over';
+    if (zi === 0) { // 불티 화살과 데미지 숫자
+      const a = place(Z, .25, 6.3, .8), b = place(Z, 2.2, 9.5, 1.1);
+      for (let i = 0; i < 3; i++) {
+        const t = (f * .5 + i * .33) % 1, px = a[0] + (b[0] - a[0]) * t, py = a[1] + (b[1] - a[1]) * t;
+        const g = x.createRadialGradient(px, py, 0, px, py, 5); g.addColorStop(0, 'rgba(255,190,90,.9)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+        x.fillStyle = g; x.fillRect(px - 5, py - 5, 10, 10); x.fillStyle = '#fff6c0'; x.fillRect(Math.round(px), Math.round(py), 2, 1);
+      }
+      x.lineWidth = 3; x.strokeStyle = '#120f1d';
+      x.font = 'bold 9px monospace'; x.strokeText('13', b[0] + 8, b[1] - 12); x.fillStyle = '#ffffff'; x.fillText('13', b[0] + 8, b[1] - 12);
+      x.font = 'bold 11px monospace'; x.strokeText('27!', b[0] - 34, b[1] - 4); x.fillStyle = '#ffd23a'; x.fillText('27!', b[0] - 34, b[1] - 4);
+    }
+  });
+});
+
+let frame = 0;
+function tick() { animated.forEach(d => d(frame)); sceneDraws.forEach(d => d(frame & 1)); frame ^= 1; }
+tick();
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(tick, 320);
+</script>
+</body>
+</html>

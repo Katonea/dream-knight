@@ -274,9 +274,9 @@ const WEATHERS = {
 };
 // 블록 종류(셰이더와 공유): 0 잔디/흙 1 잔디/돌 2 모래 3 사암 4 눈/흙 5 눈/돌 6 돌
 const ZONES = [
-  { name: '꿈 들판', time: '밤', skyTop: '#2b2676', skyBot: '#a58fe6', fog: '#9d88e0', tint: [.9, .92, 1], ground: 0, plateau: 1, shore: 2, tree: 'candyTree', treeN: 120, treeH: [3.2, 3.8], weather: [2 / 3, 1 / 3, 0], stars: 1, moon: 1 },
-  { name: '모래시계 사막', time: '황금빛 노을', skyTop: '#2c2a7a', skyBot: '#ffae6e', fog: '#eaa57a', tint: [1.06, .98, .9], ground: 2, plateau: 3, shore: 2, tree: 'hourCactus', treeN: 90, treeH: [2, 2.6], weather: [1 / 3, 1 / 3, 1 / 3], stars: 0, moon: 0 },
-  { name: '별 내리는 눈숲', time: '황혼', skyTop: '#18195a', skyBot: '#ff9a86', fog: '#b48cb0', tint: [.95, .93, 1.02], ground: 4, plateau: 5, shore: 6, tree: 'starFir', treeN: 140, treeH: [3.6, 4.4], weather: [1 / 3, 1 / 3, 1 / 3], stars: 1, moon: 0 },
+  { name: '꿈 들판', time: '밤', skyTop: '#171244', skyBot: '#7a5fcf', fog: '#7a5fcf', tint: [.72, .8, 1], ground: 0, plateau: 1, shore: 2, tree: 'candyTree', treeN: 120, treeH: [3.2, 3.8], weather: [2 / 3, 1 / 3, 0], stars: 1, moon: 1 },
+  { name: '모래시계 사막', time: '황금빛 노을', skyTop: '#2c2a7a', skyBot: '#ffae6e', fog: '#eaa57a', tint: [1.04, .95, .85], ground: 2, plateau: 3, shore: 2, tree: 'hourCactus', treeN: 90, treeH: [2, 2.6], weather: [1 / 3, 1 / 3, 1 / 3], stars: 0, moon: 0 },
+  { name: '별 내리는 눈숲', time: '황혼', skyTop: '#18195a', skyBot: '#ff9a86', fog: '#b48cb0', tint: [.86, .84, .98], ground: 4, plateau: 5, shore: 6, tree: 'starFir', treeN: 140, treeH: [3.6, 4.4], weather: [1 / 3, 1 / 3, 1 / 3], stars: 1, moon: 0 },
 ];
 const BIOMES = ZONES;
 const ZMULT = [1, 1.8, 3.2];
@@ -314,67 +314,55 @@ const STR = {
 const OUT = '#140f2a', GOLD = '#ffd23a';
 const _h255 = new Map();
 function h255(c) { let v = _h255.get(c); if (!v) { const n = parseInt(c.slice(1), 16); v = [n >> 16 & 255, n >> 8 & 255, n & 255]; _h255.set(c, v); } return v; }
-// 스프라이트는 논리 좌표로 그리고, 실제 픽셀은 SPR_K배로 찍는다. 곡선·음영·외곽선이 그만큼 고와진다.
-const SPR_K = 2;
 class Spr {
-  constructor(w, h, k = SPR_K) { this.k = k; this.w = w * k + 2; this.h = h * k + 2; this.p = new Array(this.w * this.h).fill(null); }
+  constructor(w, h) { this.w = w + 2; this.h = h + 2; this.p = new Array(this.w * this.h).fill(null); }
   raw(x, y) { return (x < 0 || y < 0 || x >= this.w || y >= this.h) ? null : this.p[y * this.w + x]; }
-  px(X, Y, c) { X = Math.floor(X) + 1; Y = Math.floor(Y) + 1; if (X >= 0 && Y >= 0 && X < this.w && Y < this.h) this.p[Y * this.w + X] = c; }
-  set(x, y, c) { const k = this.k, X = Math.floor(x) * k, Y = Math.floor(y) * k; for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) this.px(X + i, Y + j, c); }
-  rect(x, y, w, h, c) { const k = this.k; for (let j = Math.round(y * k); j < Math.round((y + h) * k); j++) for (let i = Math.round(x * k); i < Math.round((x + w) * k); i++) this.px(i, j, c); }
-  // 음영 4단: 밝은 면 · 기본 · 반그늘 · 그늘. 광원은 왼쪽 위. 경계는 체크 무늬로 한 줄 섞는다.
+  set(x, y, c) { x = Math.floor(x) + 1; y = Math.floor(y) + 1; if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.p[y * this.w + x] = c; }
+  rect(x, y, w, h, c) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c); }
   ell(cx, cy, rx, ry, c, sh = 0) {
-    const k = this.k, hi = shade(c, 1.2), mid = shade(c, .86), lo = shade(c, .68);
-    for (let Y = Math.floor((cy - ry) * k); Y <= Math.ceil((cy + ry) * k); Y++) for (let X = Math.floor((cx - rx) * k); X <= Math.ceil((cx + rx) * k); X++) {
-      const dx = ((X + .5) / k - cx) / rx, dy = ((Y + .5) / k - cy) / ry, d = dx * dx + dy * dy;
-      if (d > 1) continue;
-      let col = c;
-      if (sh) {
-        const l = -(dx * .55 + dy * .85) + ((X + Y) & 1) * .06;
-        col = l > .52 ? hi : l > .02 ? c : l > -.42 ? mid : lo;
-        if (d > .8 && dx > .35 && dy < .1) col = shade(c, 1.08); // 오른쪽 가장자리 반사광
-      }
-      this.px(X, Y, col);
+    const hi = shade(c, 1.2), lo = shade(c, .72);
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const dx = (x + .5 - cx) / rx, dy = (y + .5 - cy) / ry;
+      if (dx * dx + dy * dy > 1) continue;
+      let col = c; if (sh) { const l = -(dx * .55 + dy * .85); col = l > .5 ? hi : l < -.42 ? lo : c; }
+      this.set(x, y, col);
     }
   }
   moon(cx, cy, r, ox, oy, r2, c) {
-    const k = this.k;
-    for (let Y = Math.floor((cy - r) * k); Y <= Math.ceil((cy + r) * k); Y++) for (let X = Math.floor((cx - r) * k); X <= Math.ceil((cx + r) * k); X++) {
-      const x = (X + .5) / k, y = (Y + .5) / k, a = (x - cx) ** 2 + (y - cy) ** 2, b = (x - cx - ox) ** 2 + (y - cy - oy) ** 2;
-      if (a <= r * r && b > r2 * r2) this.px(X, Y, b < (r2 + .9) ** 2 ? shade(c, 1.15) : c);
+    for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+      const a = (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2, b = (x + .5 - cx - ox) ** 2 + (y + .5 - cy - oy) ** 2;
+      if (a <= r * r && b > r2 * r2) this.set(x, y, c);
     }
   }
   poly(pts, c) {
-    const k = this.k; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    for (let Y = Math.floor(y0 * k); Y <= Math.ceil(y1 * k); Y++) for (let X = Math.floor(x0 * k); X <= Math.ceil(x1 * k); X++) {
-      const px = (X + .5) / k, py = (Y + .5) / k; let ins = false;
+    for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) for (let x = Math.floor(x0); x <= Math.ceil(x1); x++) {
+      const px = x + .5, py = y + .5; let ins = false;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
         const [xi, yi] = pts[i], [xj, yj] = pts[j];
         if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) ins = !ins;
       }
-      if (ins) this.px(X, Y, c);
+      if (ins) this.set(x, y, c);
     }
   }
   line(x0, y0, x1, y1, c) {
-    const k = this.k; let X0 = Math.round(x0 * k + k / 2 - .5), Y0 = Math.round(y0 * k + k / 2 - .5); const X1 = Math.round(x1 * k + k / 2 - .5), Y1 = Math.round(y1 * k + k / 2 - .5);
-    const dx = Math.abs(X1 - X0), dy = -Math.abs(Y1 - Y0), sx = X0 < X1 ? 1 : -1, sy = Y0 < Y1 ? 1 : -1;
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
     let e = dx + dy;
-    for (;;) { this.px(X0, Y0, c); if (X0 === X1 && Y0 === Y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; X0 += sx; } if (e2 <= dx) { e += dx; Y0 += sy; } }
+    for (;;) { this.set(x0, y0, c); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
   }
   star(x, y, c, big) {
-    const k = this.k, X = x * k + (k >> 1), Y = y * k + (k >> 1), L = big ? 2 * k : k + 1;
-    for (let i = -L; i <= L; i++) { this.px(X + i, Y, Math.abs(i) < 2 ? '#ffffff' : c); this.px(X, Y + i, Math.abs(i) < 2 ? '#ffffff' : c); }
+    this.set(x, y, '#ffffff'); this.set(x - 1, y, c); this.set(x + 1, y, c); this.set(x, y - 1, c); this.set(x, y + 1, c);
+    if (big) { this.set(x - 2, y, c); this.set(x + 2, y, c); this.set(x, y - 2, c); this.set(x, y + 2, c); }
   }
-  // 외곽선: 바깥 1픽셀을 이웃 색을 아주 어둡게 한 색으로 (검정 일색보다 부드럽다)
   outline(c) {
     const add = [];
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
       if (this.raw(x, y)) continue;
-      const n = this.raw(x - 1, y) || this.raw(x + 1, y) || this.raw(x, y - 1) || this.raw(x, y + 1);
-      if (n) add.push([y * this.w + x, n]);
+      if (this.raw(x - 1, y) || this.raw(x + 1, y) || this.raw(x, y - 1) || this.raw(x, y + 1)) add.push(y * this.w + x);
     }
-    add.forEach(([i, n]) => { const [r, g, b] = h255(n), o = h255(c); this.p[i] = '#' + [r, g, b].map((v, j) => Math.round(v * .25 + o[j] * .75).toString(16).padStart(2, '0')).join(''); });
+    add.forEach(i => this.p[i] = c);
   }
   canvas() {
     const cv = document.createElement('canvas'); cv.width = this.w; cv.height = this.h;
@@ -646,24 +634,10 @@ const ART = {
   heart: mk(10, 9, s => { s.ell(3, 3, 2.6, 2.6, '#ff4a6a'); s.ell(7, 3, 2.6, 2.6, '#ff4a6a'); s.poly([[.5, 4], [9.5, 4], [5, 9]], '#ff4a6a'); s.set(2, 2, '#ffffff'); }),
   magnet: mk(10, 10, s => { s.rect(0, 0, 3, 8, '#4aa8ff'); s.rect(7, 0, 3, 8, '#4aa8ff'); s.rect(0, 7, 10, 3, '#4aa8ff'); s.rect(0, 0, 3, 2, '#ffffff'); s.rect(7, 0, 3, 2, '#ffffff'); }),
 };
-// 바닥 장식 (풀덤불·꽃·자갈). 구역마다 다른 세트
-const tuft = (a, b, tip) => mk(14, 9, s => {
-  s.poly([[1, 9], [3, 1], [5.5, 9]], a); s.poly([[4, 9], [7, 0], [10, 9]], b); s.poly([[8.5, 9], [11, 2], [13, 9]], a);
-  s.set(3, 1, tip); s.set(7, 0, tip); s.set(11, 2, tip);
-});
-Object.assign(ART, {
-  deco0a: tuft('#3f9a6a', '#55b47e', '#9be0b4'),
-  deco0b: mk(10, 9, s => { s.line(3, 9, 3, 4, '#3f9a6a'); s.line(7, 9, 7, 3, '#3f9a6a'); s.ell(3, 3, 1.6, 1.6, '#ffb3d9', 1); s.ell(7, 2.5, 1.6, 1.6, '#fff3d6', 1); s.set(3, 3, GOLD); s.set(7, 2, GOLD); }),
-  deco1a: tuft('#c9a35a', '#e0bd6e', '#fff0b0'),
-  deco1b: mk(10, 6, s => { s.ell(4, 4, 3.5, 2, '#b89a7a', 1); s.ell(8, 4.5, 2, 1.4, '#c8ab88', 1); }),
-  deco2a: tuft('#4f8a8a', '#5f9e9a', '#ffffff'),
-  deco2b: mk(7, 10, s => { s.poly([[3.5, 0], [6.5, 5], [3.5, 10], [.5, 5]], '#bfefff'); s.poly([[3.5, 0], [3.5, 10], [.5, 5]], '#e6fbff'); }),
-});
-const DECO_KEYS = [['deco0a', 'deco0a', 'deco0b'], ['deco1a', 'deco1b', 'deco1a'], ['deco2a', 'deco2a', 'deco2b']];
 HEROES.forEach((h, i) => { for (let st = 0; st < 3; st++) { ART[`h${i}_${st}_f`] = anim(f => knight(h, st, f)); ART[`h${i}_${st}_b`] = anim(f => knightBack(h, st, f)); } });
 
 // 아틀라스 패킹: 한 줄씩 채우는 선반 방식. SPR[key] = [프레임0, 프레임1], 각 프레임 {u0,v0,u1,v1,w,h}
-const ATLAS = 2048, SPR = {};
+const ATLAS = 1024, SPR = {};
 const atlasCv = document.createElement('canvas'); atlasCv.width = atlasCv.height = ATLAS;
 (function pack() {
   const ctx = atlasCv.getContext('2d'); let x = 0, y = 0, rowH = 0;
@@ -687,7 +661,7 @@ const camera = new THREE.PerspectiveCamera(60, 1, .1, 420);
 const atlasTex = new THREE.CanvasTexture(atlasCv);
 atlasTex.magFilter = atlasTex.minFilter = THREE.NearestFilter; atlasTex.generateMipmaps = false; atlasTex.flipY = false;
 const U = {
-  uFogColor: { value: new THREE.Color() }, uFogNear: { value: 26 }, uFogFar: { value: 72 }, uTint: { value: new THREE.Vector3(1, 1, 1) },
+  uFogColor: { value: new THREE.Color() }, uFogNear: { value: 18 }, uFogFar: { value: 58 }, uTint: { value: new THREE.Vector3(1, 1, 1) },
   uTime: { value: 0 }, uCamRight: { value: new THREE.Vector3(1, 0, 0) }, uCamUp: { value: new THREE.Vector3(0, 1, 0) }, uAtlas: { value: atlasTex },
   uSkyTop: { value: new THREE.Color() }, uSkyBot: { value: new THREE.Color() }, uStars: { value: 0 }, uMoon: { value: 0 }, uZone: { value: 0 },
 };
@@ -699,8 +673,7 @@ const txtCv = document.getElementById('txt'), tctx = txtCv.getContext('2d');
 let DPR = 1;
 function resize() {
   const w = innerWidth, h = innerHeight;
-  // DECISION: 기획서 §4.5의 480×270 저해상도 렌더 대신 기기 해상도(최대 1.5배)로 그린다. 사용자가 픽셀이 뭉개져 저품질로 보인다고 해서, 스프라이트만 또렷한 픽셀로 남긴다
-  PS = 1 / Math.min(devicePixelRatio || 1, 1.5);
+  PS = clamp(Math.min(w / 480, h / 270), 1.5, 4);
   renderer.setPixelRatio(1 / PS); renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   DPR = Math.min(2, devicePixelRatio || 1); txtCv.width = w * DPR; txtCv.height = h * DPR;
@@ -728,7 +701,7 @@ sky.renderOrder = -10; scene.add(sky);
 // ---------- terrain ----------
 const N = 180, CX = 90, CY = 90;
 const hmap = new Float32Array(N * N), ttype = new Uint8Array(N * N), solid = new Uint8Array(N * N);
-let trees = [], plats = [], lakes = [], decos = [];
+let trees = [], plats = [], lakes = [];
 function makeVN(seed) {
   const hs = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7 + seed * .0137) * 43758.5453; return n - Math.floor(n); };
   return (x, y) => {
@@ -791,13 +764,6 @@ function genTerrain(zi, seed) {
     solid[i] = 1; placed++;
     trees.push({ x: x + .5, y: y + .5, z: hmap[i], h: lerp(Z.treeH[0], Z.treeH[1], R()) });
   }
-  decos = [];
-  for (let k = 0; k < 2600; k++) {
-    const x = 2 + R() * (N - 4), y = 2 + R() * (N - 4), i = Math.floor(y) * N + Math.floor(x);
-    if (hmap[i] < 2 || solid[i]) continue;
-    const key = DECO_KEYS[zi][Math.floor(R() * 3)];
-    decos.push({ x, y, z: hmap[i], k: key, h: key.endsWith('b') ? .35 + R() * .15 : .45 + R() * .25 });
-  }
 }
 
 const terrainMat = new THREE.ShaderMaterial({
@@ -806,42 +772,34 @@ const terrainMat = new THREE.ShaderMaterial({
   varying float vFace, vType, vTop; varying vec2 vUV; varying vec3 vW;
   void main(){ vFace = aFace; vType = aType; vTop = aTop; vUV = aUV; vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
   fragmentShader: FOG_GLSL + `uniform vec3 uTint; uniform float uZone; varying float vFace, vType, vTop; varying vec2 vUV; varying vec3 vW;
-  const vec3 GRASS = vec3(.34, .68, .47), DIRT = vec3(.46, .34, .42), STONE = vec3(.52, .49, .66), SAND = vec3(.93, .80, .55),
-    SSTONE = vec3(.86, .67, .45), SNOW = vec3(.93, .95, 1.), STONE3 = vec3(.52, .52, .66);
-  float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
-    return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
-  vec3 topBase(int t){ if (t <= 1) return GRASS; if (t == 2) return SAND; if (t == 3) return SSTONE; if (t == 6) return STONE3; return SNOW; }
+  const vec3 GRASS = vec3(.25, .59, .44), DIRT = vec3(.42, .31, .40), STONE = vec3(.44, .41, .58), SAND = vec3(.89, .76, .52),
+    SSTONE = vec3(.84, .66, .44), SNOW = vec3(.92, .94, 1.), STONE3 = vec3(.47, .46, .60);
+  vec3 topCol(int t, vec2 lt, float h){
+    if (t <= 1) { if (uZone < .5 && h > .988) return h > .994 ? vec3(1., .63, .8) : vec3(.98, .96, 1.); return GRASS; }
+    if (t == 2) return SAND;
+    if (t == 3) return mod(lt.y, 8.) < 1. ? SSTONE * .84 : SSTONE;
+    if (t == 6) return STONE3;
+    return SNOW;
+  }
+  vec3 sideCol(int t, bool rim, vec2 lt){
+    if (t == 2) return SAND;
+    if (t == 3) return mod(lt.y, 8.) < 1. ? SSTONE * .82 : SSTONE;
+    if (rim && t <= 1) return GRASS;
+    if (rim && (t == 4 || t == 5)) return SNOW;
+    if (t == 0 || t == 4) return DIRT;
+    if (t == 1) return STONE;
+    return STONE3;
+  }
   void main(){
-    vec2 tex = floor(vUV * 16.), lt = mod(tex, 16.), blk = floor(vUV), tw = (tex + .5) / 16.;
-    float h = hash(tex + blk * 17.31);
+    vec2 tex = floor(vUV * 16.), lt = mod(tex, 16.), blk = floor(vUV);
+    float h = hash(tex + blk * 17.31), v = .78 + .32 * h;
     int t = int(vType + .5); vec3 c;
-    if (vFace < .5) {
-      // 윗면: 큰 얼룩(부드러운 잡음) + 풀 무늬 + 드문 꽃. 칸마다 튀는 잡음은 아주 약하게
-      float n = vnoise(tw * .32) * .6 + vnoise(tw * 1.4) * .4;
-      c = topBase(t) * (.86 + .26 * n) * (.975 + .05 * h);
-      vec2 cell = floor(tex / 6.), o = tex - cell * 6., tp = floor(vec2(hash(cell + 7.1), hash(cell + 13.7)) * 4.), r = o - tp;
-      float hc = hash(cell + 31.3);
-      bool grassy = t <= 1 || t == 4 || t == 5;
-      if (hc > .4 && ((r.y == 1. && (r.x == 0. || r.x == 2.)) || (r.y == 0. && r.x == 1.))) c *= grassy ? .74 : .86;
-      if (hc > .4 && r.y == 1. && r.x == 1. && grassy) c *= 1.08;
-      if (hc > .955 && r == vec2(3., 3.)) c = uZone < .5 ? (hash(cell) > .5 ? vec3(1., .72, .86) : vec3(1., .97, .8)) : uZone < 1.5 ? vec3(1., .9, .55) : vec3(.8, .95, 1.);
-    } else {
-      // 옆면: 벽돌 줄눈 + 위쪽 이끼(눈) 테두리와 흘러내린 자국
+    if (vFace < .5) { c = topCol(t, lt, h) * v; if (lt.x < 1. || lt.y < 1.) c *= .9; }
+    else {
       float below = (vTop - vW.y) * 16.;
-      float drip = hash(vec2(tex.x, blk.x * 3.1 + blk.y));
-      float rim = 3. + floor(drip * 3.) + (drip > .82 ? 3. : 0.);
-      float row = floor(below / 4.), bx = lt.x + mod(row, 2.) * 4., brick = floor(bx / 8.);
-      bool mortar = mod(below, 4.) < 1. || mod(bx, 8.) < 1.;
-      float bv = .84 + .26 * hash(vec2(brick, row) + blk * 5.7);
-      if (t == 2) c = SAND * (.9 + .1 * h) * (mod(below, 6.) < 1. ? .9 : 1.);
-      else if (t == 3) c = SSTONE * (mod(below, 8.) < 1. ? .78 : .95 + .08 * h);
-      else {
-        vec3 st = (t == 0 || t == 4) ? DIRT : t == 1 ? STONE : STONE3;
-        c = st * bv * (mortar ? .66 : 1.);
-        if (below < rim && t != 6) c = (t >= 4 ? SNOW : GRASS) * (.9 + .12 * h) * (below < 1. ? 1.12 : 1.);
-      }
-      float sh = vFace < 1.5 ? .92 : vFace < 2.5 ? .8 : vFace < 3.5 ? .7 : .62;
-      c *= sh * mix(1., .78, clamp((vTop - vW.y) / 7., 0., 1.));
+      float rim = 3. + floor(hash(vec2(tex.x, blk.x * 3.1 + blk.y)) * 3.);
+      c = sideCol(t, below < rim, vec2(lt.x, floor(below))) * v;
+      c *= (vFace < 1.5 ? .8 : .64) * mix(1., .7, clamp((vTop - vW.y) / 6., 0., 1.));
     }
     c *= uTint;
     gl_FragColor = vec4(mix(c, uFogColor, fogF(vW)), 1.);
@@ -857,9 +815,9 @@ function buildTerrainMesh() {
     const i = y * N + x, h = hmap[i], t = ttype[i];
     quad([[x, h, y], [x + 1, h, y], [x + 1, h, y + 1], [x, h, y + 1]], 0, t, h, [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]);
     const nb = (xx, yy) => inMap(xx, yy) ? hmap[yy * N + xx] : 0;
-    let nh = nb(x - 1, y); if (nh < h) quad([[x, nh, y], [x, nh, y + 1], [x, h, y + 1], [x, h, y]], 3, t, h, [[y, nh], [y + 1, nh], [y + 1, h], [y, h]]);
+    let nh = nb(x - 1, y); if (nh < h) quad([[x, nh, y], [x, nh, y + 1], [x, h, y + 1], [x, h, y]], 1, t, h, [[y, nh], [y + 1, nh], [y + 1, h], [y, h]]);
     nh = nb(x + 1, y); if (nh < h) quad([[x + 1, nh, y + 1], [x + 1, nh, y], [x + 1, h, y], [x + 1, h, y + 1]], 1, t, h, [[y + 1, nh], [y, nh], [y, h], [y + 1, h]]);
-    nh = nb(x, y - 1); if (nh < h) quad([[x + 1, nh, y], [x, nh, y], [x, h, y], [x + 1, h, y]], 4, t, h, [[x + 1, nh], [x, nh], [x, h], [x + 1, h]]);
+    nh = nb(x, y - 1); if (nh < h) quad([[x + 1, nh, y], [x, nh, y], [x, h, y], [x + 1, h, y]], 2, t, h, [[x + 1, nh], [x, nh], [x, h], [x + 1, h]]);
     nh = nb(x, y + 1); if (nh < h) quad([[x, nh, y + 1], [x + 1, nh, y + 1], [x + 1, h, y + 1], [x, h, y + 1]], 2, t, h, [[x, nh], [x + 1, nh], [x + 1, h], [x, h]]);
   }
   const g = new THREE.BufferGeometry();
@@ -938,7 +896,7 @@ const spriteB = new Batch(5000, [['iPos', 3], ['iSize', 2], ['iUV', 4], ['iFx', 
   fragmentShader: FOG_GLSL + `uniform sampler2D uAtlas; uniform vec3 uTint; varying vec2 vUv; varying vec4 vFx, vTint; varying vec3 vW;
   void main(){
     vec4 t = texture2D(uAtlas, vUv); if (t.a < .5 || vFx.z < .5) discard;
-    vec3 c = mix(t.rgb, vTint.rgb, vTint.a); c = mix(c, vec3(1.), vFx.x); c *= mix(vec3(1.), uTint, .35);
+    vec3 c = mix(t.rgb, vTint.rgb, vTint.a); c = mix(c, vec3(1.), vFx.x); c *= mix(vec3(1.), uTint, .6);
     gl_FragColor = vec4(mix(c, uFogColor, fogF(vW)), 1.);
   }`,
 }), 10);
@@ -1820,7 +1778,7 @@ function update(dt) {
 
 // ---------- render ----------
 const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3(), _b = new THREE.Vector3();
-const SHAPE_H = { slime: 1.2, flyer: 1.05, quad: 1.25, biped: 1.55 };
+const SHAPE_H = { slime: .95, flyer: .85, quad: 1.0, biped: 1.25 };
 const TINT = { frozen: [.6, .9, 1], ignite: [1, .5, .2], toxin: [.7, .35, .9], jolt: [1, .9, .3], soak: [.3, .55, 1] };
 const XPC = [[.75, 1, .45], [.75, 1, .45], [1, .6, .25]];
 const OBJ_SPR = { guardianAltar: ['altar', 2.2], chest: ['chest', 1.0], freeChest: ['freeChest', 1.0], runeStone: ['runeStone', 2.0], goldOre: ['goldOre', 1.0], berryBush: ['berryBush', .8], portal: ['portal', 2.8] };
@@ -1864,7 +1822,6 @@ function drawWorld() {
   const ox = P ? P.x : CX, oy = P ? P.y : CY, R2 = 65 * 65, tk = ZONES[(G.zone || 1) - 1].tree, T = U.uTime.value;
   const near = (x, y) => (x - ox) ** 2 + (y - oy) ** 2 < R2;
   for (const t of trees) if (near(t.x, t.y)) pushSprite(tk, 0, t.x, t.y, t.z, t.h);
-  for (const d of decos) if ((d.x - ox) ** 2 + (d.y - oy) ** 2 < 1444) pushSprite(d.k, 0, d.x, d.y, d.z, d.h);
   if (!P) return finishBatches();
   const SH = hexRgb('#140f33');
   for (const o of G.objects) {
@@ -1886,9 +1843,8 @@ function drawWorld() {
   const fwx = Math.cos(CAM.yaw), fwy = Math.sin(CAM.yaw), dotF = P.dir[0] * fwx + P.dir[1] * fwy, dotR = -P.dir[0] * fwy + P.dir[1] * fwx;
   if (Math.abs(dotF) > .35) P.facingBack = dotF > 0;
   const vis = P.iframes > 0 && !SIM ? Math.floor(T * 20) % 2 : 1;
-  pushSprite(`h${P.heroIdx}_${P.awaken}_${P.facingBack ? 'b' : 'f'}`, P.moving ? Math.floor(P.anim / .16) : Math.floor(T * 2.5), P.x, P.y, P.z, 1.75 + .25 * P.awaken, 0, (P.facingBack ? dotR < -.3 : dotR > .3) ? 1 : 0, null, 0, vis);
+  pushSprite(`h${P.heroIdx}_${P.awaken}_${P.facingBack ? 'b' : 'f'}`, P.moving ? Math.floor(P.anim / .16) : Math.floor(T * 2.5), P.x, P.y, P.z, 1.15 + .25 * P.awaken + .2, 0, (P.facingBack ? dotR < -.3 : dotR > .3) ? 1 : 0, null, 0, vis);
   pushDecal(P.x, P.y, hAt(P.x, P.y), .55, SH, .4);
-  pushDecal(P.x, P.y, hAt(P.x, P.y), .85, hexRgb(P.hero.cape), .7, 1, 0, 0, .14);
   // 적
   for (let i = 0; i < E.n; i++) {
     if (E.dead[i] || !near(E.x[i], E.y[i])) continue;

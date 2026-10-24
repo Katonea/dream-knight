@@ -1236,7 +1236,8 @@ function compact() {
   E.n = w;
 }
 // 공간 해시 (셀 3 m)
-const CELL = 3, GW = Math.ceil(N / CELL), hHead = new Int32Array(GW * GW), hNext = new Int32Array(EMAX);
+// 해시는 -1(빈 칸)로 시작한다. 0으로 두면 첫 프레임에 해시를 만들기 전 조회(비 날씨)가 0번→0번을 끝없이 돌아 화면이 멈춘다.
+const CELL = 3, GW = Math.ceil(N / CELL), hHead = new Int32Array(GW * GW).fill(-1), hNext = new Int32Array(EMAX);
 const cellOf = v => clamp(Math.floor(v / CELL), 0, GW - 1);
 function rebuildHash() {
   hHead.fill(-1);
@@ -1332,7 +1333,7 @@ function buildZone(z) {
   const tiers = [[0], [0, 1], [1, 2]][z - 1];
   G.eligible = MOBS.map((m, i) => i).filter(i => tiers.includes(MOBS[i].tier));
   G.pool = shuffle(G.eligible.slice()).slice(0, 2);
-  E.n = 0; proj = []; eproj = []; fx = []; pickups = []; parts = []; dying = [];
+  E.n = 0; rebuildHash(); proj = []; eproj = []; fx = []; pickups = []; parts = []; dying = [];
   G.objects = placeObjects();
   P.x = CX; P.y = CY; P.z = hAt(CX, CY); P.vz = 0; P.grounded = true;
   CAM.tx = P.x; CAM.ty = P.y; CAM.tz = P.z; CAM.lift = 0;

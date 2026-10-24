@@ -339,7 +339,7 @@ const STR = {
   title: '꿈지기 기사', subtitle: '밤의 꿈나라에 번진 악몽을 쓸어내요',
   pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
   zoneBanner: '구역 {z} / {name}', zoneSub: '{weather}', slot4: '네 번째 기술 슬롯 해금',
-  hint: 'Space 점프(2단) · 마우스 드래그 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
+  hint: 'Space 점프(공중 점프는 바람 망토를 먹어야) · 마우스 드래그 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
   newMob: '새 몬스터 등장: {name}', giant: '거대 개체 출현!', giantSub: '쓰러뜨리면 보상 상자',
   surround: '포위당했어요!', charge: '떼돌격!', eliteWave: '정예 웨이브', eliteSub: '금빛 테두리를 조심하세요',
   flood: '대범람!', floodSub: '시간이 다 됐어요. 서둘러 수호자를!',
@@ -1353,7 +1353,7 @@ const EALL = EF.concat(['uid', 'mob', 'fl', 'dead']);
 let proj = [], eproj = [], fx = [], nums = [], pickups = [], parts = [], dying = [];
 const BASE_ST = {
   damage: 1, physical: 1, magic: 1, attackSpeed: 1, area: 1, projectiles: 0, critChance: .05, critDamage: 1.5, moveSpeed: 1, maxHp: 100, armor: 0,
-  regen: 0, pickupRange: 4, xpGain: 1, coinGain: 1, luck: 0, statusChance: 1, statusDamage: 1, weakHit: 1, eliteDamage: 1, duration: 1, projSpeed: 1, extraJumps: 1,
+  regen: 0, pickupRange: 4, xpGain: 1, coinGain: 1, luck: 0, statusChance: 1, statusDamage: 1, weakHit: 1, eliteDamage: 1, duration: 1, projSpeed: 1, extraJumps: 0,
 };
 const mobDef = i => E.fl[i] & BOSS ? BOSSES[E.mob[i] - 100] : MOBS[E.mob[i]];
 const relicN = id => P.relics.get(id) || 0;
@@ -1401,7 +1401,7 @@ function newRun(skillIdx, diffIdx) {
     dpsWin: [], dpsT: 0, dpsLast: 0, later: [], hz: [], sw: [], lanes: [], minis: [], ev: null, evK: 0, evLook: null, evDone: new Set(), curses: [], phantom: 0, challenge: null, firstElite: false,
   };
   P = {
-    hero, heroIdx, x: CX, y: CY, z: 3, vz: 0, grounded: true, jumps: 1, dir: [0, 1], hp: 1, lvl: 1, xp: 0, xpNext: xpNext(1), awaken: 0,
+    hero, heroIdx, x: CX, y: CY, z: 3, vz: 0, grounded: true, jumps: 0, dir: [0, 1], hp: 1, lvl: 1, xp: 0, xpNext: xpNext(1), awaken: 0,
     skills: [null, null, null, null], slots: 3, runes: new Map(), relics: new Map(), blessings: [], st: { ...BASE_ST }, iframes: 0,
     rerolls: 2, skips: 2, banishes: 1, banishing: false, banished: G.banished, god: false, anim: 0, moving: false, facingBack: true, kx: 0, ky: 0, hurtT: 0, noHitT: 0,
   };
@@ -1989,6 +1989,8 @@ function applyCard(c) {
   else if (c.type === 'rune') { const m = RARITY[c.rar].m, h = P.runes.get(c.rune.id); if (h) { h.lvl++; h.acc += m; } else P.runes.set(c.rune.id, { lvl: 1, acc: m }); recompute(); }
   else if (c.type === 'coin') G.coins += c.v;
 }
+// 공중 점프는 바람 망토(유물)로만 얻는다. 처음 여는 무료 상자에는 반드시 한 장 끼워 준다
+const recomputeJumps = () => { recompute(); return P.st.extraJumps; };
 function relicChoices(minRar = 0) {
   const out = [];
   for (let k = 0; k < 3; k++) {
@@ -1999,6 +2001,7 @@ function relicChoices(minRar = 0) {
 }
 function applyRelic(rl) {
   P.relics.set(rl.id, relicN(rl.id) + 1);
+  if (rl.id === 'wind_cape') { toast('공중 점프가 열렸어요!'); if (P.grounded) P.jumps = Math.floor(recomputeJumps()); }
   if (rl.proc === 'xp2') { levelUp(); levelUp(); }
   recompute(); logEv('relic', rl.id);
 }
@@ -3081,6 +3084,7 @@ function levelTool(k) {
 function openChest(free) {
   G.state = 'choice';
   modal = { kind: 'chest', items: relicChoices() };
+  if (free && !G.capeOffered && !relicN('wind_cape')) { G.capeOffered = true; if (!modal.items.includes(RELIC_BY.wind_cape)) modal.items[0] = RELIC_BY.wind_cape; }
   if (SIM) { closeModal(); G.state = 'play'; return; }
   const sellV = 8 * G.zone;
   showPanel(`<div class="panel"><h2>${free ? STR.freeTitle : STR.chestTitle}</h2><p>${STR.chestSub}</p><div class="cards">${modal.items.map((r, i) => `<button class="card" data-i="${i}"><div class="tag" style="background:${RARITY[r.rar].color}">${RARITY[r.rar].name} · ${fmt(STR.relicStack, { n: relicN(r.id) })}</div><div class="row2">${iconImg('i_' + r.id)}<div class="nm">${r.name}</div></div><div class="ds">${r.desc}</div><div class="ky">${fmt(STR.key, { k: i + 1 })}</div></button>`).join('')}</div>

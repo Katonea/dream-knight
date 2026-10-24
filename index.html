@@ -344,7 +344,7 @@ const STR = {
   title: '꿈지기 기사', subtitle: '밤의 꿈나라에 번진 악몽을 쓸어내요',
   pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
   zoneBanner: '구역 {z} / {name}', zoneSub: '{weather}', slot4: '네 번째 기술 슬롯 해금',
-  hint: 'Space 점프(공중 점프는 바람 망토를 먹어야) · 마우스 이동 시점 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
+  hint: 'Space 점프(블록은 점프로 올라요 · 공중 점프는 바람 망토) · 마우스 이동 시점 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
   newMob: '새 몬스터 등장: {name}', giant: '거대 개체 출현!', giantSub: '쓰러뜨리면 보상 상자',
   surround: '포위당했어요!', charge: '떼돌격!', eliteWave: '정예 웨이브', eliteSub: '금빛 테두리를 조심하세요',
   flood: '대범람!', floodSub: '시간이 다 됐어요. 서둘러 수호자를!',
@@ -2226,7 +2226,8 @@ function updatePlayer(dt) {
   const inWater = hAt(P.x, P.y) < 2 && P.z < 2;
   const spd = 6.2 * P.st.moveSpeed * (inWater ? .65 : 1);
   if (P.moving) { P.dir = [wx / len, wy / len]; P.anim += dt; }
-  const lim = P.grounded ? P.z + 1.05 : P.z + .3;
+  // 마인크래프트처럼 블록은 걸어서 못 오른다: 같은 높이까지만 걷고, 한 칸이라도 높으면 점프해야 한다(시뮬 봇만 예전처럼 1.05까지 걸어 오름)
+  const lim = P.grounded ? P.z + (SIM ? 1.05 : .05) : P.z + .3;
   const nx = P.x + wx * spd * dt; if (wx && groundH(nx + Math.sign(wx) * .3, P.y) <= lim) P.x = nx;
   const ny = P.y + wy * spd * dt; if (wy && groundH(P.x, ny + Math.sign(wy) * .3) <= lim) P.y = ny;
   // 피격 넉백(지형에 막히면 그 축은 멈춤)

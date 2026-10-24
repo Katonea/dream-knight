@@ -48,10 +48,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:#fff}
 #vig{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(255,40,60,0) 55%,rgba(255,40,60,.55) 100%)}
 #touch{position:fixed;inset:0;pointer-events:none;display:none}
-#joy{position:absolute;width:88px;height:88px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:none;transform:translate(-50%,-50%)}
-#joy i{position:absolute;left:50%;top:50%;width:36px;height:36px;margin:-18px;border-radius:50%;background:rgba(255,255,255,.35)}
+#joy{position:absolute;left:calc(28px + env(safe-area-inset-left, 0px));bottom:calc(28px + env(safe-area-inset-bottom, 0px));width:112px;height:112px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(18,15,29,.35)}
+#joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(255,255,255,.45)}
+#actBtn{display:none;left:50%!important;top:64%;transform:translate(-50%,-50%);width:auto!important;min-width:132px;height:52px!important;border-radius:26px!important;padding:0 22px;font-size:16px!important;border:2px solid rgba(255,255,255,.35)!important;background:#3fbf6a!important;color:#fff!important;box-shadow:0 3px 0 #237a40}
+#actBtn.off{background:#6a6878!important;box-shadow:0 3px 0 #3e3c4a;color:#d8d6e2!important}
+body.touch .pcOnly,body.touch #hint{display:none!important}
+body.touch #skills{left:calc(14px + env(safe-area-inset-left, 0px));bottom:auto;top:104px;gap:5px}
+body.touch .sk{width:46px;height:46px;padding-top:14px;font-size:9px}
+#heroPic canvas{image-rendering:pixelated;display:block;margin:0 auto}
+body.touch #ultw{display:none}
 #touch button{position:absolute;pointer-events:auto;width:56px;height:56px;border-radius:50%;border:2px solid var(--line);background:var(--panel);color:var(--text);font:900 14px 'Noto Sans KR',system-ui;touch-action:none}
-#bJump{right:96px;bottom:110px}#bE{right:164px;bottom:58px}#bUlt{right:20px;bottom:110px}#bPause{right:14px;top:120px;width:44px!important;height:44px!important}
+#bJump{right:calc(96px + env(safe-area-inset-right, 0px));bottom:calc(40px + env(safe-area-inset-bottom, 0px));width:68px!important;height:68px!important}#bUlt{right:calc(20px + env(safe-area-inset-right, 0px));bottom:calc(96px + env(safe-area-inset-bottom, 0px))}#bPause{right:14px;top:120px;width:44px!important;height:44px!important}
 #ov{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(10,8,20,.62);padding:16px;overflow:auto}
 #ov.on{display:flex}
 .panel{margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:900px;width:100%;text-align:center;backdrop-filter:blur(4px)}
@@ -96,6 +103,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
   #skills{bottom:14px;left:10px;gap:5px}
   #prompt{bottom:190px}
 }
+@media (max-height:500px){
+  #heroPic canvas{width:40px;height:auto}.panel .sub{display:none}
+  .panel{padding:12px 16px}.panel h1{font-size:24px;margin:0}.panel p{margin:2px 0 6px;font-size:12px}
+  .card{min-height:0;padding:24px 10px 10px}.card .ds{font-size:11px}.cards{margin:6px 0}
+  .tools .btn,.btn{min-height:40px;padding:6px 14px}
+}
 @media (prefers-reduced-motion:reduce){.card,#banner,.toast{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -116,7 +129,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
   <div id="dbg"></div>
 </div>
 <div id="flash"></div><div id="vig"></div>
-<div id="touch"><div id="joy"><i></i></div><button id="bJump">점프</button><button id="bE">E</button><button id="bUlt">궁</button><button id="bPause">II</button></div>
+<div id="touch"><div id="joy"><i></i></div><button id="bJump">점프</button><button id="bUlt">궁</button><button id="bPause">II</button><button id="actBtn"></button></div>
 <div id="ov"></div>
 <div id="err"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -188,11 +201,15 @@ const SKILLS = [
 ].map(([id, name, el, arch, cls, status, chance]) => ({ id, name, el, arch, cls, status, chance }));
 const SKILL_BY = Object.fromEntries(SKILLS.map(s => [s.id, s]));
 
-const HEROES = [
+const HERO_ALL = [
   { id: 'pyro', el: 'fire', hp: 95, passive: [['statusDamage', 'mul', .25]], passiveDesc: '상태이상 피해 +25%', names: ['불씨 꿈지기', '촛불 기사', '태양 기사'], skills: ['fire_arrow', 'lava_lump', 'flame_jet', 'heat_burst'], cape: '#ff7a3a', eye: '#ffc070' },
   { id: 'tide', el: 'water', hp: 120, passive: [['armor', 'add', 6]], passiveDesc: '방어력 +6', names: ['이슬 꿈지기', '물결 기사', '밀물 기사'], skills: ['water_arrow', 'bubble_spray', 'jet_stream', 'whirl_wave'], cape: '#4aa8ff', eye: '#a6deff' },
   { id: 'grove', el: 'forest', hp: 105, passive: [['regen', 'add', .6]], passiveDesc: 'HP 재생 +0.6/s', names: ['새싹 꿈지기', '숲 기사', '고목 기사'], skills: ['thorn_seed', 'bramble_slash', 'acorn_bomb', 'petal_ring'], cape: '#6ad04a', eye: '#c0ff90' },
 ];
+// DECISION: 사용자 지시로 파란 꿈지기(이슬)만 남긴다. 나머지 둘은 데이터만 보존
+const HEROES = HERO_ALL.filter(h => h.id === 'tide');
+// 시작 기술: 세 꿈지기가 원래 들고 시작하던 기술 중 하나를 골라 들어간다
+const START_SKILLS = ['fire_arrow', 'water_arrow', 'thorn_seed'];
 const SIG_UNLOCK = [0, 2, 4, 7];
 
 // 몬스터 (§8.1). 이름·그림은 꿈나라 버전, 수치는 기획서 그대로
@@ -303,7 +320,7 @@ const ELITE = 1, GIANT = 2, BOSS = 4, ESCORT = 8;
 
 const STR = {
   title: '꿈지기 기사', subtitle: '밤의 꿈나라에 번진 악몽을 쓸어내요',
-  pickHero: '꿈지기를 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 꿈지기 · ↑ ↓ 난이도 · Enter 시작',
+  pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
   zoneBanner: '구역 {z} / {name}', zoneSub: '{weather}', slot4: '네 번째 기술 슬롯 해금',
   hint: 'Space 점프(2단) · 마우스 드래그 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
   newMob: '새 몬스터 등장: {name}', giant: '거대 개체 출현!', giantSub: '쓰러뜨리면 보상 상자',
@@ -320,6 +337,7 @@ const STR = {
   win: '지역 클리어!', lose: '쓰러졌어요', retry: '다시 하기 (Enter)', copyLog: '로그 복사', copied: '복사했어요',
   score: '점수', time: '시간', kills: '처치', level: '레벨', bosses: '수호자', medal: '메달',
   medals: ['챔피언', '골드', '실버', '브론즈'],
+  actOpen: '열기', actOpenPrice: '열기 · {p}◆', actWake: '수호자 깨우기', actBreak: '깨기', actPick: '따기', actPortal: '구역 {n}로 이동', actClear: '지역 클리어',
   pAltar: 'E · 수호자 깨우기', pChest: 'E · 보물 상자 열기 ({p}◆)', pChestNo: '코인이 부족해요 ({p}◆)', pFree: 'E · 무료 상자 열기', pOre: 'E · 꿈 결정 바위 깨기',
   pBerry: 'E · 달맞이 열매 따기 (HP 50%)', pPortal: 'E · 구역 {n}로 이동', pPortalLast: 'E · 지역 클리어', pRune: '비석 충전 중 {p}%',
   locked: '잠김', lockZone: '구역 2', loadFail: '3D 라이브러리를 불러오지 못했어요. 새로고침해 주세요.',
@@ -1125,35 +1143,40 @@ addEventListener('keydown', e => {
   keys.add(e.code);
 });
 addEventListener('keyup', e => keys.delete(e.code));
-function lostFocus() { keys.clear(); ptr.joyId = ptr.camId = null; ptr.jx = ptr.jy = 0; if (G && G.state === 'play' && !SIM) openPause(); }
+function lostFocus() { keys.clear(); ptr.joyId = ptr.camId = null; ptr.jx = ptr.jy = 0; joyEl.firstChild.style.transform = ''; if (G && G.state === 'play' && !SIM) openPause(); }
 addEventListener('blur', lostFocus);
 document.addEventListener('visibilitychange', () => { if (document.hidden) lostFocus(); });
-const joyEl = document.getElementById('joy');
+const joyEl = document.getElementById('joy'), JOY_R = 44;
+// 조이스틱은 왼쪽 아래에 항상 보이고, 받침 바깥으로 조금(받침 반지름의 2.4배 안, 또는 화면 왼쪽 아래 구역) 벗어나 눌러도 잡힌다
+function joyCenter() { const r = joyEl.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+function joyMove(x, y) {
+  const [cx, cy] = joyCenter(); let dx = x - cx, dy = y - cy; const d = Math.hypot(dx, dy);
+  if (d > JOY_R) { dx *= JOY_R / d; dy *= JOY_R / d; }
+  ptr.jx = dx / JOY_R; ptr.jy = dy / JOY_R; joyEl.firstChild.style.transform = `translate(${dx}px,${dy}px)`;
+}
 glCv.addEventListener('pointerdown', e => {
-  if (e.pointerType === 'touch' && e.clientX < innerWidth / 2 && ptr.joyId === null) {
-    ptr.joyId = e.pointerId; ptr.ox = e.clientX; ptr.oy = e.clientY; ptr.jx = ptr.jy = 0;
-    joyEl.style.display = 'block'; joyEl.style.left = e.clientX + 'px'; joyEl.style.top = e.clientY + 'px'; joyEl.firstChild.style.transform = '';
-  } else if (ptr.camId === null) { ptr.camId = e.pointerId; ptr.lx = e.clientX; ptr.ly = e.clientY; }
+  const [cx, cy] = joyCenter(), near = Math.hypot(e.clientX - cx, e.clientY - cy) < 135;
+  const leftLow = e.clientX < innerWidth * .4 && e.clientY > innerHeight * .4;
+  if (e.pointerType === 'touch' && ptr.joyId === null && (near || leftLow)) { ptr.joyId = e.pointerId; joyMove(e.clientX, e.clientY); }
+  else if (ptr.camId === null) { ptr.camId = e.pointerId; ptr.lx = e.clientX; ptr.ly = e.clientY; }
   try { glCv.setPointerCapture(e.pointerId); } catch (_) { }
 });
 glCv.addEventListener('pointermove', e => {
-  if (e.pointerId === ptr.joyId) {
-    let dx = e.clientX - ptr.ox, dy = e.clientY - ptr.oy; const d = Math.hypot(dx, dy);
-    if (d > 44) { dx *= 44 / d; dy *= 44 / d; }
-    ptr.jx = dx / 44; ptr.jy = dy / 44; joyEl.firstChild.style.transform = `translate(${dx}px,${dy}px)`;
-  } else if (e.pointerId === ptr.camId) {
+  if (e.pointerId === ptr.joyId) joyMove(e.clientX, e.clientY);
+  else if (e.pointerId === ptr.camId) {
     CAM.yaw += (e.clientX - ptr.lx) * .006; CAM.pitch = clamp(CAM.pitch + (e.clientY - ptr.ly) * .004, .15, 1.05);
     ptr.lx = e.clientX; ptr.ly = e.clientY;
   }
 });
 const ptrEnd = e => {
-  if (e.pointerId === ptr.joyId) { ptr.joyId = null; ptr.jx = ptr.jy = 0; joyEl.style.display = 'none'; }
+  if (e.pointerId === ptr.joyId) { ptr.joyId = null; ptr.jx = ptr.jy = 0; joyEl.firstChild.style.transform = ''; }
   if (e.pointerId === ptr.camId) ptr.camId = null;
 };
 glCv.addEventListener('pointerup', ptrEnd); glCv.addEventListener('pointercancel', ptrEnd);
 glCv.addEventListener('wheel', e => { CAM.dist = clamp(CAM.dist + Math.sign(e.deltaY) * .6, 4, 12); e.preventDefault(); }, { passive: false });
 const tbtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); fn(); });
-tbtn('bJump', () => req.jump = 1); tbtn('bE', () => req.interact = 1); tbtn('bUlt', () => req.ult = 1); tbtn('bPause', () => G.state === 'play' && openPause());
+tbtn('bJump', () => req.jump = 1); tbtn('actBtn', () => req.interact = 1); tbtn('bUlt', () => req.ult = 1); tbtn('bPause', () => G.state === 'play' && openPause());
+if (isTouch) document.body.classList.add('touch');
 
 // ---------- state ----------
 let G = { state: 'menu' }, P = null, SIM = false;
@@ -1201,8 +1224,8 @@ function nearestN(x, y, range, n) {
 }
 
 // ---------- run & zone ----------
-function newRun(heroIdx, diffIdx) {
-  const hero = HEROES[heroIdx];
+function newRun(skillIdx, diffIdx) {
+  const heroIdx = 0, hero = HEROES[heroIdx], startSkill = START_SKILLS[skillIdx] || START_SKILLS[1];
   G = {
     state: 'play', zone: 1, zoneTime: 0, time: 0, kills: 0, coins: 0, dmgTotal: 0, bosses: 0, diffIdx, diff: DIFFS[diffIdx], weather: 'clear',
     timeline: [], tlI: 0, pool: [], eligible: [], credits: 0, objects: [], boss: null, ult: 0, ultBuf: .024, levelQueue: 0, chestsBought: 0,
@@ -1214,10 +1237,10 @@ function newRun(heroIdx, diffIdx) {
     skills: [null, null, null, null], slots: 3, runes: new Map(), relics: new Map(), blessings: [], st: { ...BASE_ST }, iframes: 0,
     rerolls: 2, skips: 2, banishes: 1, banishing: false, banished: G.banished, god: false, anim: 0, moving: false, facingBack: true,
   };
-  P.skills[0] = newSkillInst(SKILL_BY[hero.skills[0]]);
+  P.skills[0] = newSkillInst(SKILL_BY[startSkill]);
   recompute(); P.hp = P.st.maxHp;
   buildZone(1);
-  logEv('start', heroIdx);
+  logEv('start', startSkill);
 }
 function xpNext(L) { return Math.round(8 + 5.5 * L + Math.pow(L, 1.8)); }
 function recompute() {
@@ -2187,12 +2210,24 @@ function updateHUD(dt) {
     d.children[2].style.width = (inst.active > 0 ? 100 : clamp(1 - inst.t / v.cd, 0, 1) * 100) + '%';
   }
   hud.ult.firstChild.style.height = (G.ult * 100) + '%'; hud.ult.classList.toggle('ready', G.ult >= 1);
+  if (isTouch) { const u = Math.round(G.ult * 100), b = $('bUlt'); b.style.background = `linear-gradient(to top, rgba(255,210,58,.65) ${u}%, rgba(18,15,29,.82) ${u}%)`; b.style.borderColor = G.ult >= 1 ? 'var(--gold)' : ''; }
   let pr = '';
   if (G.near) {
     const o = G.near;
     pr = o.kind === 'guardianAltar' ? STR.pAltar : o.kind === 'chest' ? fmt(G.coins >= chestPrice() ? STR.pChest : STR.pChestNo, { p: chestPrice() }) : o.kind === 'freeChest' ? STR.pFree :
       o.kind === 'goldOre' ? STR.pOre : o.kind === 'berryBush' ? STR.pBerry : G.zone >= 3 ? STR.pPortalLast : fmt(STR.pPortal, { n: G.zone + 1 });
   } else if (G.runeNear) pr = fmt(STR.pRune, { p: Math.floor(G.runeNear.charge / (G.runeNear.glow ? 14 : 8) * 100) });
+  if (isTouch) {
+    // 모바일: E 프롬프트 대신 화면 가운데 아래에 상황 버튼. 코인이 모자라면 회색
+    const o = G.near, act = $('actBtn');
+    if (o) {
+      const p = chestPrice(), poor = o.kind === 'chest' && G.coins < p;
+      act.textContent = o.kind === 'chest' ? fmt(STR.actOpenPrice, { p }) : o.kind === 'freeChest' ? STR.actOpen : o.kind === 'guardianAltar' ? STR.actWake :
+        o.kind === 'goldOre' ? STR.actBreak : o.kind === 'berryBush' ? STR.actPick : G.zone >= 3 ? STR.actClear : fmt(STR.actPortal, { n: G.zone + 1 });
+      act.classList.toggle('off', poor); act.style.display = 'block';
+    } else act.style.display = 'none';
+    pr = G.runeNear && !o ? pr : '';
+  }
   hud.prompt.style.display = pr ? 'block' : 'none'; if (pr) hud.prompt.textContent = pr;
   const b = G.boss;
   if (b && b.alive) { const i = idxOf(b.uid); if (i >= 0) { hud.boss.style.display = 'block'; hud.bname.textContent = b.def.name; hud.boss.querySelector('i').style.width = (E.hp[i] / E.mhp[i] * 100) + '%'; } }
@@ -2308,7 +2343,7 @@ const iconImg = (key, px = 40) => ICON[key] ? `<img class="ic" src="${ICON[key]}
 
 // ---------- screens ----------
 const ov = $('ov');
-let bannerT = 0, menuSel = { hero: 0, diff: 0 }, modal = null;
+let bannerT = 0, menuSel = { skill: 1, diff: 0 }, modal = null;
 function banner(t, s) { const b = $('banner'); b.firstChild.textContent = t; b.lastChild.textContent = s || ''; b.classList.add('on'); bannerT = 2.2; }
 function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; $('toasts').appendChild(d); setTimeout(() => d.remove(), 3000); while ($('toasts').children.length > 3) $('toasts').firstChild.remove(); }
 function flash(c, a) { if (!G) return; G.flashC = c; G.flashA = a; }
@@ -2321,16 +2356,15 @@ function heroCanvas(i, scale) {
 function showTitle() {
   G = { state: 'menu' }; P = null;
   $('hud').style.display = 'none'; $('touch').style.display = 'none';
-  showPanel(`<div class="panel"><h1>${STR.title}</h1><p>${STR.subtitle}</p>
-    <div class="sub">${STR.pickHero}</div><div class="cards" id="heroCards"></div>
+  showPanel(`<div class="panel"><div id="heroPic"></div><h1>${STR.title}</h1><p>${HEROES[0].names[0]} · HP ${HEROES[0].hp} · ${HEROES[0].passiveDesc}</p>
+    <div class="sub">${STR.pickSkill}</div><div class="cards" id="heroCards"></div>
     <div class="sub">${STR.pickDiff}</div><div class="row" id="diffRow" style="margin:8px 0 14px"></div>
-    <button class="btn on" id="startBtn">${STR.start}</button><p style="margin-top:10px">${STR.titleKeys}</p></div>`);
-  HEROES.forEach((h, i) => {
-    const b = document.createElement('button'); b.className = 'card'; b.dataset.i = i;
-    b.innerHTML = `<div class="tag" style="background:${h.cape}">${ELEMENTS[h.el].name}</div>`;
-    b.appendChild(heroCanvas(i, 3));
-    b.insertAdjacentHTML('beforeend', `<div class="nm">${h.names[0]}</div><div class="ds">HP ${h.hp} · ${h.passiveDesc}<br>${SKILL_BY[h.skills[0]].name}</div><div class="ky">${fmt(STR.key, { k: i + 1 })}</div>`);
-    b.onclick = () => { menuSel.hero = i; refreshTitle(); };
+    <button class="btn on" id="startBtn">${STR.start}</button><p class="pcOnly" style="margin-top:10px">${STR.titleKeys}</p></div>`);
+  $('heroPic').appendChild(heroCanvas(0, 3));
+  START_SKILLS.forEach((id, i) => {
+    const d = SKILL_BY[id], b = document.createElement('button'); b.className = 'card'; b.dataset.i = i;
+    b.innerHTML = `<div class="tag" style="background:${ELEMENTS[d.el].color}">${ELEMENTS[d.el].name}</div><div class="row2">${iconImg('s_' + id)}<div class="nm">${d.name}</div></div><div class="ds">${ARCH[d.arch].name} · ${STR.cls[d.cls]}${d.status ? `<br>${STATUS[d.status]} ${Math.round(d.chance * 100)}%` : ''}</div><div class="ky pcOnly">${fmt(STR.key, { k: i + 1 })}</div>`;
+    b.onclick = () => { menuSel.skill = i; refreshTitle(); };
     $('heroCards').appendChild(b);
   });
   DIFFS.forEach((d, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = d.name; b.onclick = () => { menuSel.diff = i; refreshTitle(); }; $('diffRow').appendChild(b); });
@@ -2338,13 +2372,13 @@ function showTitle() {
   refreshTitle();
 }
 function refreshTitle() {
-  document.querySelectorAll('#heroCards .card').forEach((c, i) => c.classList.toggle('sel', i === menuSel.hero));
+  document.querySelectorAll('#heroCards .card').forEach((c, i) => c.classList.toggle('sel', i === menuSel.skill));
   document.querySelectorAll('#diffRow .btn').forEach((c, i) => c.classList.toggle('on', i === menuSel.diff));
 }
 function startGame() {
   if (G.state !== 'menu') return;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  closeModal(); newRun(menuSel.hero, menuSel.diff);
+  closeModal(); newRun(menuSel.skill, menuSel.diff);
   $('hud').style.display = 'block'; $('touch').style.display = isTouch ? 'block' : 'none';
 }
 function cardHTML(c, i) {
@@ -2442,9 +2476,9 @@ function gameOver(win) {
 function onKey(code) {
   const s = G.state;
   if (s === 'menu') {
-    if (code === 'ArrowLeft') menuSel.hero = (menuSel.hero + 2) % 3; else if (code === 'ArrowRight') menuSel.hero = (menuSel.hero + 1) % 3;
+    if (code === 'ArrowLeft') menuSel.skill = (menuSel.skill + 2) % 3; else if (code === 'ArrowRight') menuSel.skill = (menuSel.skill + 1) % 3;
     else if (code === 'ArrowUp') menuSel.diff = (menuSel.diff + 2) % 3; else if (code === 'ArrowDown') menuSel.diff = (menuSel.diff + 1) % 3;
-    else if (/^Digit[1-3]$/.test(code)) menuSel.hero = +code[5] - 1;
+    else if (/^Digit[1-3]$/.test(code)) menuSel.skill = +code[5] - 1;
     else if (code === 'Enter') { startGame(); return; }
     refreshTitle();
   } else if (s === 'play') {
@@ -2478,7 +2512,7 @@ function botStep() {
 }
 window.__game = {
   get G() { return G; }, get P() { return P; }, get E() { return E; },
-  start(heroIdx = 0, diffIdx = 0) { menuSel.hero = heroIdx; menuSel.diff = diffIdx; startGame(); return true; },
+  start(skillIdx = 1, diffIdx = 0) { if (G.state !== 'menu') showTitle(); menuSel.skill = skillIdx; menuSel.diff = diffIdx; startGame(); return true; },
   simulate(seconds, dt = 1 / 30) {
     SIM = true;
     const steps = Math.round(seconds / dt);

@@ -249,6 +249,9 @@ const RANGED = {
   arcane_owl: { range: 9, cd: 3.2, spd: 6, mul: .7, n: 1, col: '#ff6ab0' },
   toy_robot: { range: 10, cd: 2.8, spd: 8, mul: .6, n: 1, col: '#9ff6ff' },
   storm_jelly: { range: 9, cd: 3.6, spd: 7, mul: .55, n: 3, col: '#ffd23a' },
+  // 구역 1(등급 0)에도 원거리가 있어야 해서 약한 원거리 2종을 둔다. 사거리·탄 속도가 등급 1보다 낮다
+  blanket_ghost: { range: 8, cd: 3.8, spd: 5, mul: .6, n: 1, col: '#c8a0ff' },
+  frost_moth: { range: 8, cd: 3.4, spd: 5.5, mul: .55, n: 1, col: '#9fe0ff' },
 };
 const BOSSES = [
   { id: 'boss1', name: '이끼 이불 거인', el: 'forest', shape: 'biped', size: 24 },
@@ -1270,7 +1273,7 @@ function newRun(skillIdx, diffIdx) {
   P = {
     hero, heroIdx, x: CX, y: CY, z: 3, vz: 0, grounded: true, jumps: 1, dir: [0, 1], hp: 1, lvl: 1, xp: 0, xpNext: xpNext(1), awaken: 0,
     skills: [null, null, null, null], slots: 3, runes: new Map(), relics: new Map(), blessings: [], st: { ...BASE_ST }, iframes: 0,
-    rerolls: 2, skips: 2, banishes: 1, banishing: false, banished: G.banished, god: false, anim: 0, moving: false, facingBack: true,
+    rerolls: 2, skips: 2, banishes: 1, banishing: false, banished: G.banished, god: false, anim: 0, moving: false, facingBack: true, kx: 0, ky: 0, hurtT: 0,
   };
   P.skills[0] = newSkillInst(SKILL_BY[startSkill]);
   recompute(); P.hp = P.st.maxHp;
@@ -1364,9 +1367,13 @@ function fireBeat(ev) {
   const k = ev.k;
   if (k === 'card') {
     const left = G.eligible.filter(i => !G.pool.includes(i));
-    if (left.length) { const m = pick(left); G.pool.push(m); toast(fmt(STR.newMob, { name: MOBS[m].name })); }
+    // 원거리 몬스터가 풀에 없으면 첫 카드에서 원거리를 넣는다(구역 1에서 원거리를 못 보고 끝나던 문제)
+    const rl = left.filter(i => RANGED[MOBS[i].id]), noR = !G.pool.some(i => RANGED[MOBS[i].id]);
+    if (left.length) { const m = noR && rl.length ? pick(rl) : pick(left); G.pool.push(m); toast(fmt(STR.newMob, { name: MOBS[m].name })); }
   } else if (k === 'giant') {
-    const [x, y] = ringPos(26, 32); spawnEnemy(pick(G.pool), { x, y, giant: true, elite: false }); banner(STR.giant, STR.giantSub);
+    // 거대 개체는 가까이(16~20 m) 근접형으로 내고 카메라 정면에서, 플레이어를 빠르게 쫓는다. 26~32 m에 느리게 나오면 나무에 걸리거나 화면 밖에서 녹아 안 보였다
+    const melee = G.pool.filter(i => !RANGED[MOBS[i].id]);
+    const [x, y] = ringPos(16, 20, CAM.yaw + rand(-.5, .5)); spawnEnemy(pick(melee.length ? melee : G.pool), { x, y, giant: true, elite: false }); banner(STR.giant, STR.giantSub);
   } else if (k === 'surround' || k === 'charge') {
     const m = pick(G.pool), base = Math.random() * Math.PI * 2;
     for (let i = 0; i < 36; i++) {
@@ -1396,7 +1403,7 @@ function spawnEnemy(mi, o = {}) {
   } else {
     E.hp[i] = def.hp * (1 + t / 60 * .18) * Zm * D.hp * (elite ? 5 : giant ? 14 : 1);
     E.dmg[i] = def.dmg * (1 + t / 60 * .05) * Math.pow(Zm, .6) * D.dmg * (elite ? 1.5 : giant ? 1.8 : 1);
-    E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * (giant ? .85 : 1) * (o.spdMul || 1);
+    E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * (giant ? 1.25 : 1) * (o.spdMul || 1);
   }
   E.born[i] = .35; E.shot[i] = RANGED[def.id] ? rand(1.5, RANGED[def.id].cd) : 0; E.mhp[i] = E.hp[i]; E.s[i] = def.size / 10 * 1.15 * sz; E.r[i] = def.size * .05 * sz; E.anim[i] = Math.random() * 10;
   return i;
@@ -1523,8 +1530,11 @@ function addPickup(k, x, y, z, v) {
   if (k === 'xp' && pickups.length > 600) { for (let j = pickups.length - 1; j >= 0; j--) if (pickups[j].k === 'xp') { pickups[j].v += v; return; } }
   pickups.push({ k, x, y, z, v, fly: false, t: Math.random() * 6 });
 }
-function hurtPlayer(d) {
+// sx, sy: 때린 쪽 위치. 주면 반대쪽으로 살짝 밀린다
+function hurtPlayer(d, sx, sy) {
   if (P.iframes > 0 || P.god || SIM) return;
+  if (sx !== undefined) { const dx = P.x - sx, dy = P.y - sy, l = Math.hypot(dx, dy) || 1; P.kx = dx / l * 7; P.ky = dy / l * 7; }
+  P.hurtT = .35;
   d *= 100 / (100 + P.st.armor);
   P.hp -= d; P.iframes = .45; G.trauma = Math.min(1, G.trauma + .25);
   G.ult = Math.min(1, G.ult + d / P.st.maxHp * .35);
@@ -1743,7 +1753,7 @@ function updateProj(dt) {
   }
   for (let k = eproj.length - 1; k >= 0; k--) {
     const p = eproj[k]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
-    if (Math.hypot(p.x - P.x, p.y - P.y) < p.r + .5 && Math.abs(p.z - (P.z + .5)) < 1.6) { hurtPlayer(p.dmg); p.life = 0; }
+    if (Math.hypot(p.x - P.x, p.y - P.y) < p.r + .5 && Math.abs(p.z - (P.z + .5)) < 1.6) { hurtPlayer(p.dmg, p.x - p.vx, p.y - p.vy); p.life = 0; }
     if (p.life <= 0) eproj.splice(k, 1);
   }
 }
@@ -1860,6 +1870,22 @@ function updatePlayer(dt) {
   const lim = P.grounded ? P.z + 1.05 : P.z + .3;
   const nx = P.x + wx * spd * dt; if (wx && groundH(nx + Math.sign(wx) * .3, P.y) <= lim) P.x = nx;
   const ny = P.y + wy * spd * dt; if (wy && groundH(P.x, ny + Math.sign(wy) * .3) <= lim) P.y = ny;
+  // 피격 넉백(지형에 막히면 그 축은 멈춤)
+  P.hurtT = Math.max(0, P.hurtT - dt);
+  if (P.kx || P.ky) {
+    const kx = P.x + P.kx * dt, ky = P.y + P.ky * dt;
+    if (groundH(kx, P.y) <= lim) P.x = kx; if (groundH(P.x, ky) <= lim) P.y = ky;
+    const dc = Math.exp(-10 * dt); P.kx *= dc; P.ky *= dc; if (Math.hypot(P.kx, P.ky) < .05) P.kx = P.ky = 0;
+  }
+  // 몬스터를 통과하지 못한다: 같은 높이(1.2 m 안)의 적과 겹치면 바깥으로 밀어낸다. 점프·고원 위에서는 넘어간다
+  forNear(P.x, P.y, 3, j => {
+    if (Math.abs(E.z[j] - P.z) > 1.2) return;
+    const ox = P.x - E.x[j], oy = P.y - E.y[j], rr = E.r[j] + .4, d2 = ox * ox + oy * oy;
+    if (d2 >= rr * rr) return;
+    const d = Math.sqrt(d2) || 1e-3, push = rr - d, ux = d2 > 1e-6 ? ox / d : 1, uy = d2 > 1e-6 ? oy / d : 0;
+    const tx = P.x + ux * push, ty = P.y + uy * push;
+    if (groundH(tx, P.y) <= lim) P.x = tx; if (groundH(P.x, ty) <= lim) P.y = ty;
+  });
   P.x = clamp(P.x, 2, N - 2); P.y = clamp(P.y, 2, N - 2);
   const g = groundH(P.x, P.y);
   if (req.jump) {
@@ -1915,13 +1941,16 @@ function updateEnemies(dt) {
     vx += E.kx[i]; vy += E.ky[i]; E.kx[i] *= decay; E.ky[i] *= decay;
     let nx = E.x[i] + vx * dt, ny = E.y[i] + vy * dt;
     const cellI = Math.floor(ny) * N + Math.floor(nx);
-    if (inMap(Math.floor(nx), Math.floor(ny)) && solid[cellI]) { nx = E.x[i]; ny = E.y[i]; }
+    // 나무에 막히면 한 축으로 미끄러진다(멈춰 서서 영영 못 오던 것 방지)
+    if (inMap(Math.floor(nx), Math.floor(ny)) && solid[cellI]) {
+      if (!solid[Math.floor(E.y[i]) * N + Math.floor(nx)]) ny = E.y[i]; else if (!solid[Math.floor(ny) * N + Math.floor(E.x[i])]) nx = E.x[i]; else { nx = E.x[i]; ny = E.y[i]; }
+    }
     const g = hAt(nx, ny), z = E.z[i];
     if (g > z + 1.05) { nx = E.x[i] + vx * dt * .3; ny = E.y[i] + vy * dt * .3; E.z[i] = Math.min(g, z + 4 * dt); }
     else if (g >= z) E.z[i] = g; else E.z[i] = Math.max(g, z - 10 * dt);
     E.x[i] = clamp(nx, 2, N - 2); E.y[i] = clamp(ny, 2, N - 2);
     const ddx = E.x[i] - px, ddy = E.y[i] - py, dist = Math.hypot(ddx, ddy);
-    if (E.frozen[i] <= 0 && Math.abs(E.z[i] - P.z) < 1.4 && dist < E.r[i] + .5) hurtPlayer(E.dmg[i] * (isBoss && b && b.st === 'dash' ? 1.2 : 1));
+    if (E.frozen[i] <= 0 && Math.abs(E.z[i] - P.z) < 1.4 && dist < E.r[i] + .5) hurtPlayer(E.dmg[i] * (isBoss && b && b.st === 'dash' ? 1.2 : 1), E.x[i], E.y[i]);
     if (dist > 70 && !(E.fl[i] & (ELITE | GIANT | BOSS | ESCORT))) { const [x, y] = ringPos(38, 46); E.x[i] = x; E.y[i] = y; E.z[i] = hAt(x, y); }
   }
   compact();
@@ -2068,7 +2097,8 @@ function update(dt) {
 const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3(), _b = new THREE.Vector3();
 const SHAPE_H = { slime: 1.15, flyer: 1.0, quad: 1.2, biped: 1.5 };
 const TINT = { frozen: [.6, .9, 1], ignite: [1, .5, .2], toxin: [.7, .35, .9], jolt: [1, .9, .3], soak: [.3, .55, 1] };
-const XPC = [[.75, 1, .45], [.75, 1, .45], [1, .6, .25]];
+// 경험치는 보라 계열(풀·땅 색과 겹치지 않게). 큰 조각일수록 밝은 분홍빛
+const XPC = [[.72, .38, 1], [.85, .45, 1], [1, .5, .85]];
 // DECISION: 유료 상자(kind 'chest')는 꿈 상인으로 그린다. 로직 이름은 그대로 둔다
 const BEACON = { chest: { c: '#ffd23a', pillar: 1 }, freeChest: { c: '#fff0a0', pillar: 1 }, guardianAltar: { c: '#ff3a4a', pillar: 1 }, runeStone: { c: '#2ec8e0', pillar: 1 }, runeGlow: { c: '#5ad87a', pillar: 1 }, portal: { c: '#c070ff', pillar: 1 }, goldOre: { c: '#ffe066' }, berryBush: { c: '#ff9ad0' } };
 const OBJ_SPR = { guardianAltar: ['altar', 2.2], chest: ['merchant', 1.6], freeChest: ['freeChest', 1.0], runeStone: ['runeStone', 2.0], goldOre: ['goldOre', 1.0], berryBush: ['berryBush', .8], portal: ['portal', 2.8] };
@@ -2145,7 +2175,13 @@ function drawWorld() {
   const fwx = Math.cos(CAM.yaw), fwy = Math.sin(CAM.yaw), dotF = P.dir[0] * fwx + P.dir[1] * fwy, dotR = -P.dir[0] * fwy + P.dir[1] * fwx;
   if (Math.abs(dotF) > .35) P.facingBack = dotF > 0;
   const vis = P.iframes > 0 && !SIM ? Math.floor(T * 20) % 2 : 1;
-  pushSprite(`h${P.heroIdx}_${P.awaken}_${P.facingBack ? 'b' : 'f'}`, P.moving ? Math.floor(P.anim / .16) : Math.floor(T * 2.5), P.x, P.y, P.z, 1.6 + .25 * P.awaken, 0, (P.facingBack ? dotR < -.3 : dotR > .3) ? 1 : 0, null, 0, vis);
+  const hk = `h${P.heroIdx}_${P.awaken}_${P.facingBack ? 'b' : 'f'}`, hfr = P.moving ? Math.floor(P.anim / .16) : Math.floor(T * 2.5), hh = 1.6 + .25 * P.awaken, hfl = (P.facingBack ? dotR < -.3 : dotR > .3) ? 1 : 0;
+  // 피격 빨간 테두리: 빨갛게 칠한 사본 4장을 상하좌우로 조금씩 밀고 플레이어 뒤(카메라 반대쪽)에 둔다
+  if (P.hurtT > 0 && !SIM) {
+    const rx = U.uCamRight.value.x, ry = U.uCamRight.value.z, o = .07, bx = P.x + fwx * .05, by = P.y + fwy * .05;
+    for (const [a, z] of [[o, 0], [-o, 0], [0, o], [0, -o]]) pushSprite(hk, hfr, bx + rx * a, by + ry * a, P.z + z, hh, 0, hfl, [1, .12, .15], 1, 1);
+  }
+  pushSprite(hk, hfr, P.x, P.y, P.z, hh, 0, hfl, P.hurtT > 0 ? [1, .3, .3] : null, P.hurtT > 0 ? .3 * P.hurtT / .35 : 0, vis);
   pushDecal(P.x, P.y, hAt(P.x, P.y), .55, SH, .4);
   pushDecal(P.x, P.y, hAt(P.x, P.y), .8, hexRgb(P.hero.cape), .7, 1, 0, 0, .14);
   // 적
@@ -2162,6 +2198,7 @@ function drawWorld() {
     pushSprite(key, fr, E.x[i], E.y[i], E.z[i] + lift - rise * h * .9, h, Math.max(E.flash[i], rise * .6), 0, tint, ta);
     pushDecal(E.x[i], E.y[i], E.z[i], E.r[i] * 1.1 + .1, SH, .4);
     if (fl & GIANT) pushDecal(E.x[i], E.y[i], E.z[i], E.r[i] * 1.5 + .2, [1, .3, .3], .8, 1, 0, 0, .14);
+    if (fl & GIANT) { pushDecal(E.x[i], E.y[i], E.z[i], E.r[i] * 1.5 + .6 + .3 * Math.sin(T * 6), [1, .3, .3], .5, 1, 0, 0, .08); pushGlow(E.x[i], E.y[i], E.z[i] + h + lift + .5, 1.1, [1, .3, .3], .7); }
     else if (fl & ELITE) pushDecal(E.x[i], E.y[i], E.z[i], E.r[i] * 1.5 + .2, [1, .82, .23], .8, 1, 0, 0, .14);
   }
   for (const d of dying) { const u = d.t / .22; pushSprite(d.k, 0, d.x, d.y, d.z, d.h * (1 - u * .85), 1, 0, null, 0, 1, 1 + u * 1.2); }
@@ -2173,8 +2210,8 @@ function drawWorld() {
     if (!near(p.x, p.y)) continue;
     const bob = Math.sin(p.t * 3) * .12 + .25;
     const spin = Math.cos(p.t * 4), wm = Math.max(.15, Math.abs(spin)), fl = spin < 0 ? 1 : 0;
-    if (p.k === 'xp') { const tier = p.v < 5 ? 0 : p.v < 20 ? 1 : 2; pushSprite('shard', 0, p.x, p.y, p.z + bob, tier ? .5 : .32, 0, fl, XPC[tier], .55, 1, wm); if (tier) pushGlow(p.x, p.y, p.z + bob + .2, .6, XPC[tier], .5); }
-    else pushSprite(p.k === 'coin' ? 'coin' : p.k === 'heal' ? 'heart' : 'magnet', 0, p.x, p.y, p.z + bob, .42, 0, fl, null, 0, 1, wm);
+    if (p.k === 'xp') { const tier = p.v < 5 ? 0 : p.v < 20 ? 1 : 2; pushSprite('shard', 0, p.x, p.y, p.z + bob, tier ? .78 : .6, 0, fl, XPC[tier], .75, 1, wm); pushGlow(p.x, p.y, p.z + bob + .25, tier ? .9 : .6, XPC[tier], tier ? .6 : .4); }
+    else pushSprite(p.k === 'coin' ? 'coin' : p.k === 'heal' ? 'heart' : 'magnet', 0, p.x, p.y, p.z + bob, .6, 0, fl, null, 0, 1, wm);
   }
   // 기술 이펙트
   for (let s = 0; s < P.slots; s++) {
@@ -2299,6 +2336,7 @@ function updateHUD(dt) {
   const m = hud.mini; m.drawImage(miniBg, 0, 0);
   const k = 96 / N;
   m.fillStyle = 'rgba(255,90,110,.9)'; for (let i = 0; i < E.n; i += 2) m.fillRect(E.x[i] * k, E.y[i] * k, 1, 1);
+  m.fillStyle = '#ff2a3a'; for (let i = 0; i < E.n; i++) if (E.fl[i] & GIANT && !E.dead[i]) m.fillRect(E.x[i] * k - 2.5, E.y[i] * k - 2.5, 5, 5);
   for (const o of G.objects) {
     if (o.used && o.kind !== 'portal') continue;
     m.fillStyle = o.kind === 'guardianAltar' ? '#ff3a4a' : o.kind === 'runeStone' ? '#2ec8e0' : o.kind === 'portal' ? '#c070ff' : o.kind.includes('hest') ? '#ffd23a' : null;

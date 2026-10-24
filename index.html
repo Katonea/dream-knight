@@ -1161,7 +1161,7 @@ water.rotation.x = -Math.PI / 2; water.position.set(N / 2, 2 - .12, N / 2); wate
 const outside = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshBasicMaterial({ color: 0x7a5fcf }));
 outside.rotation.x = -Math.PI / 2; outside.position.set(N / 2, -.05, N / 2); outside.renderOrder = -1; scene.add(outside);
 
-// ---------- 지도 (참고 게임식: 시점 따라 도는 원형 미니맵 + 탐험한 곳만 보이는 안개 + Tab으로 보는 큰 지도) ----------
+// ---------- 지도 (시점 따라 도는 원형 미니맵 + 탐험한 곳만 보이는 안개 + Tab으로 보는 큰 지도) ----------
 const mapTerr = document.createElement('canvas'); mapTerr.width = mapTerr.height = N;
 const mapSeen = document.createElement('canvas'); mapSeen.width = mapSeen.height = N;
 const SEEN_R = 30, RADAR = 42, seenGrid = new Uint8Array((N >> 1) * (N >> 1));
@@ -1616,7 +1616,7 @@ function placeObjects() {
   place('guardianAltar', 1, 52, 76);
   place('chest', 4, 12, 80);
   place('freeChest', 1, 15, 50);
-  // 제단 4종과 저주받은 상자 (참고 게임 분석 §6). 멀리서 구별되게 표식 색을 따로 둔다
+  // 제단 4종과 저주받은 상자 멀리서 구별되게 표식 색을 따로 둔다
   place('challengeAltar', 1, 20, 70); place('phantomAltar', 1, 25, 74); place('swapAltar', 1, 22, 72);
   if (G.zone >= 2) place('cursedAltar', 1, 25, 76); place('cursedChest', 1, 20, 74);
   // DECISION: 빛나는 비석은 충전이 길다(14초) 대신 가호 희귀도 롤에 행운 +50을 준다 — 기획서에 차이가 시간만 적혀 있어서 보상 차이를 추가
@@ -1635,7 +1635,7 @@ function buildZone(z) {
   const tl = [], sh = t => Math.max(60, t - G.diff.early);
   for (let t = 60; t < 576; t += rand(48, 72)) tl.push({ t, k: 'card' });
   [150, 330, 480].forEach(t => tl.push({ t: sh(t), k: 'giant' }));
-  // 포위·행진·떼·베개 비, 중간 보스, 랜덤 이벤트 (참고 게임 분석 §4·§5)
+  // 포위·행진·떼·베개 비, 중간 보스, 랜덤 이벤트
   // 사건을 더 자주(v2.2): 포위 2 · 행진 3 · 종이학 떼 2 · 베개 비 3
   tl.push({ t: sh(z === 1 ? 215 : 190), k: 'surround' }, { t: sh(390), k: 'surround' });
   tl.push({ t: sh(z === 1 ? 150 : 130), k: 'stampede' }, { t: sh(330), k: 'stampede' }, { t: sh(520), k: 'stampede' });
@@ -1665,7 +1665,7 @@ function logEv(event, value) { if (G.log) G.log.push({ t: +G.time.toFixed(2), ev
 const SPAWN_K = 1.6;   // §10.2 손잡이: 생성 속도 마지막 계수
 const XP_K = 1.3;      // §10.2 손잡이: 경험치 큐브 배율
 const BOSS_HP = 2000; // §10.2 손잡이: 보스 기본 HP(약한 빌드용 바닥값). 실제 HP는 spawnBoss에서 fitHp로 화력 × 목표 시간(40/50/60초)에 맞춘다(최대 4배)
-// 참고 게임 분석 §9: 구역 2·3은 이미 75·150초가 지난 것처럼 시작한다(유효 시간). 생성·상한·적 강도는 유효 시간으로, 타임라인 이벤트는 실제 구역 시간으로 센다
+// 구역 2·3은 이미 75·150초가 지난 것처럼 시작한다(유효 시간). 생성·상한·적 강도는 유효 시간으로, 타임라인 이벤트는 실제 구역 시간으로 센다
 const ZOFF = [0, 75, 150];
 const effT = () => G.zoneTime + ZOFF[G.zone - 1] * Math.min(1, G.zoneTime / 20);
 const spdZ = () => Math.min(1.3, 1 + .02 * effT() / 60 + .06 * (G.zone - 1));
@@ -2438,7 +2438,7 @@ function update(dt) {
   if (G.levelQueue > 0) openLevelUp();
 }
 
-// ---------- 꿈 사건 (참고 게임 분석에서 가져온 규칙: 보스 HP 맞춤, 보스 행동, 웨이브, 이벤트, 중간 보스, 제단) ----------
+// ---------- 꿈 사건 (보스 HP 맞춤, 보스 행동, 웨이브, 이벤트, 중간 보스, 제단) ----------
 Object.assign(STR, {
   patName: { ring: '꿈 방울 고리', charge: '돌진', volley: '연속 사격', slam: '내려찍기', wave: '충격파', summon: '악몽 부르기', spiral: '소용돌이', meteor: '별똥비' },
   enrage: '분노!', enrageSub: '{name}이(가) 화났어요: 더 빠르고 새 공격', impatient: '조급해졌다!', leap: '도약!',
@@ -2522,7 +2522,7 @@ function updateHazards(dt) {
 
 // ---- 보스 행동 (§3): 패턴 8종, 분노, 조급함, 추격 도약 ----
 const BOSS_PATS = ['ring', 'charge', 'volley', 'slam', 'wave', 'summon'], RAGE_PATS = ['spiral', 'meteor'];
-// ---- 보스 시그니처 기술·탈진·제단 봉인 (참고 게임 분석 반영, v2.2) ----
+// ---- 보스 시그니처 기술·탈진·제단 봉인 (v2.2) ----
 // 구역 1 이불 거인: 꿈 덩굴 십자 / 구역 2 촛대 맹수: 촛농 질주(길에 불 웅덩이) / 구역 3 뇌운 고래: 번개 급강하. 보스 행동 세 번째마다 쓴다.
 Object.assign(STR, {
   sigName: { cross: '꿈 덩굴 십자', charge: '촛농 질주', leap: '번개 급강하' },
@@ -3137,7 +3137,7 @@ function updateHUD(dt) {
   hud.stats.innerHTML = fmt(STR.hudStats, { lvl: P.lvl, kills: G.kills, coins: G.coins });
   hud.hname.textContent = P.hero.names[P.awaken]; hud.hname.style.color = P.hero.eye;
   hud.zinfo.textContent = fmt(STR.hudZone, { z: G.zone, name: ZONES[G.zone - 1].name });
-  { const left = 600 - G.zoneTime; hud.timer.textContent = left > 0 ? fmtTime(left) : '+' + fmtTime(-left); hud.timer.classList.toggle('red', left <= 60); }   // 참고 게임처럼 남은 시간이 줄어들고, 0이 되면 최후의 무리가 시작돼 +로 올라간다
+  { const left = 600 - G.zoneTime; hud.timer.textContent = left > 0 ? fmtTime(left) : '+' + fmtTime(-left); hud.timer.classList.toggle('red', left <= 60); }   // 남은 시간이 줄어들고, 0이 되면 최후의 무리가 시작돼 +로 올라간다
   hud.winfo.textContent = fmt(STR.hudWeather, { w: WEATHERS[G.weather].name, n: E.n }) + (G.ev ? ' · ' + EVT[G.ev.k].name + ' ' + Math.ceil(G.ev.left) + '초' : '') + (G.phantom ? ' · 악몽 ×' + G.phantom : '') + (G.curses.length ? ' · 저주 ' + G.curses.length : '');
   for (let s = 0; s < 4; s++) {
     const d = hud.slots[s], inst = P.skills[s];

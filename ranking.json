@@ -1,5 +1,20 @@
 {
-  "v": 1,
-  "updated": "2026-10-24T00:00:00.000Z",
-  "entries": []
+ "v": 1,
+ "updated": "2026-10-24T12:52:38.846Z",
+ "entries": [
+  {
+   "name": "시험용",
+   "score": 36509,
+   "time": 655.4,
+   "kills": 2400,
+   "level": 51,
+   "diff": 1,
+   "dmg": 1234568,
+   "bosses": 3,
+   "zone": 3,
+   "skill": "fire_arrow",
+   "date": "2026-10-24",
+   "by": "Katonea"
+  }
+ ]
 }

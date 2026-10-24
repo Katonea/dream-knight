@@ -1489,10 +1489,14 @@ function logEv(event, value) { if (G.log) G.log.push({ t: +G.time.toFixed(2), ev
 const SPAWN_K = 1.6;   // §10.2 손잡이: 생성 속도 마지막 계수
 const XP_K = 1.3;      // §10.2 손잡이: 경험치 큐브 배율
 const BOSS_HP = 2000; // §10.2 손잡이: 보스 기본 HP(약한 빌드용 바닥값). 실제 HP는 spawnBoss에서 fitHp로 화력 × 목표 시간(40/50/60초)에 맞춘다(최대 4배)
+// 참고 게임 분석 §9: 구역 2·3은 이미 75·150초가 지난 것처럼 시작한다(유효 시간). 생성·상한·적 강도는 유효 시간으로, 타임라인 이벤트는 실제 구역 시간으로 센다
+const ZOFF = [0, 75, 150];
+const effT = () => G.zoneTime + ZOFF[G.zone - 1] * Math.min(1, G.zoneTime / 20);
+const spdZ = () => Math.min(1.3, 1 + .02 * effT() / 60 + .06 * (G.zone - 1));
 function director(dt) {
-  const t = G.zoneTime, z = G.zone, D = G.diff;
-  const cap = Math.min(1100, Math.round((10 + .65 * t + 4.5 * (t / 60) ** 2) * (1 + .6 * (z - 1)) * D.cap));
-  const rate = (.7 + .014 * t + .5 * Math.pow(t / 60, 1.75)) * (1 + .35 * (z - 1)) * D.amount * (G.flood ? 6 : 1) * SPAWN_K * (1 + .25 * G.phantom) * (1 + .3 * cursed('horde'));
+  const t = G.zoneTime, z = G.zone, D = G.diff, te = effT();
+  const cap = Math.min(1100, Math.round((10 + .65 * te + 4.5 * (te / 60) ** 2) * (1 + .6 * (z - 1)) * D.cap));
+  const rate = (.7 + .014 * te + .5 * Math.pow(te / 60, 1.75)) * (1 + .35 * (z - 1)) * D.amount * (G.flood ? 6 : 1) * SPAWN_K * (1 + .25 * G.phantom) * (1 + .3 * cursed('horde'));
   G.credits = Math.min(G.credits + rate * dt, rate * 2 + 10);
   let c = 0;
   while (G.credits >= 1 && c < 40 && E.n < cap) { spawnEnemy(pick(G.pool)); G.credits--; c++; }
@@ -1536,7 +1540,7 @@ function spawnEnemy(mi, o = {}) {
   if (E.n >= EMAX) return -1;
   let x = o.x, y = o.y; if (x === undefined) [x, y] = ringPos(38, 46);
   if (solid[Math.floor(y) * N + Math.floor(x)]) x += 1;
-  const def = o.boss ? BOSSES[mi] : MOBS[mi], t = G.zoneTime, Zm = ZMULT[G.zone - 1], D = G.diff;
+  const def = o.boss ? BOSSES[mi] : MOBS[mi], t = effT(), Zm = ZMULT[G.zone - 1], D = G.diff;
   const elite = o.boss ? false : o.elite ?? (Math.random() < .012 + t / 60 * .004 + (G.zone - 1) * .03 + D.elite);
   const giant = !!o.giant, i = E.n++;
   for (const k of EF) E[k][i] = 0;
@@ -1551,7 +1555,7 @@ function spawnEnemy(mi, o = {}) {
   } else {
     E.hp[i] = def.hp * (1 + t / 60 * .18) * Zm * D.hp * (elite ? 5 : giant ? 14 : o.mini ? 18 : shiny ? 3 : 1) * (o.hpMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('thick'));
     E.dmg[i] = def.dmg * (1 + t / 60 * .05) * Math.pow(Zm, .6) * D.dmg * (elite ? 1.5 : giant ? 1.8 : o.mini ? 1.6 : 1) * (o.dmgMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('fierce'));
-    E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * (giant ? 1.25 : 1) * (o.spdMul || 1) * (1 + .15 * cursed('swift'));
+    E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * spdZ() * (giant ? 1.25 : 1) * (o.spdMul || 1) * (1 + .15 * cursed('swift'));
     if (o.stamp) { E.dx[i] = o.stamp[0]; E.dy[i] = o.stamp[1]; E.life[i] = 12; }
     E.mk[i] = o.mk ?? (o.mini || 0);
   }

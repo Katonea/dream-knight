@@ -24,9 +24,13 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 #tc{position:absolute;left:0;right:0;top:10px;text-align:center;font-size:13px}
 #timer{font-size:26px;font-weight:900;line-height:1.15}#timer.red{color:var(--hplow)}
 #winfo{font-size:12px;color:var(--sub)}
-#mini{position:absolute;right:14px;top:12px;width:96px;height:96px;border-radius:10px;border:1px solid var(--line);image-rendering:pixelated;background:#120f1d}
+#mini{position:absolute;right:14px;top:12px;width:96px;height:96px;border-radius:50%;border:2px solid var(--line);image-rendering:pixelated;background:#120f1d;pointer-events:auto;cursor:pointer}
 #sets{position:absolute;right:14px;top:114px;display:flex;gap:6px;pointer-events:auto}#sets button{width:34px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:14px;padding:0;cursor:pointer}#sets button.off{opacity:.45}body:not(.touch) #vibB{display:none}
 #evov{position:fixed;inset:0;pointer-events:none;opacity:0}#evov[data-k=fog]{background:radial-gradient(ellipse at center,rgba(150,130,210,0) 30%,rgba(120,100,180,.55) 100%)}#evov[data-k=storm]{background:radial-gradient(ellipse at center,rgba(0,0,0,0) 40%,rgba(10,10,40,.5) 100%)}#evov[data-k=eclipse]{background:radial-gradient(ellipse at center,rgba(0,0,0,0) 25%,rgba(40,0,30,.7) 100%)}
+#bigmap{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,8,20,.55);z-index:6;pointer-events:none}#bigmap.on{display:flex}body.touch #bigmap.on{pointer-events:auto}
+.bmbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px;border-radius:14px;background:rgba(18,15,29,.9);border:1px solid var(--line)}
+#bmc{width:min(62vmin,560px);height:min(62vmin,560px);image-rendering:pixelated;border-radius:8px}
+#bmleg{display:flex;flex-wrap:wrap;gap:4px 12px;max-width:min(62vmin,560px);font-size:12px;justify-content:center}#bmleg i{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:2px}#bmleg small{width:100%;text-align:center;color:var(--sub)}
 #bossbar{position:absolute;left:50%;top:84px;width:min(440px,70vw);transform:translateX(-50%);display:none;text-align:center;font-size:13px}
 #bossbar .bar{height:12px;margin-top:3px}#bossbar .bar>i{background:#ff5a8a}
 #banner{position:absolute;left:0;right:0;top:38%;text-align:center;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(8px)}
@@ -124,8 +128,8 @@ body.touch #ultw{display:none}
 <div id="hud">
   <div id="tl"><div class="bar" id="hpb"><i></i><em></em></div><div class="bar" id="xpb"><i></i></div><div id="stats"></div><div id="hname"></div></div>
   <div id="tc"><div id="zinfo"></div><div id="timer"></div><div id="winfo"></div></div>
-  <canvas id="mini" width="96" height="96"></canvas>
-  <div id="sets"><button id="sndB" title="소리">🔊</button><button id="vibB" title="진동">📳</button></div>
+  <canvas id="mini" width="128" height="128"></canvas>
+  <div id="sets"><button id="mapB" title="지도 (Tab)">🗺</button><button id="sndB" title="소리">🔊</button><button id="vibB" title="진동">📳</button></div>
   <div id="bossbar"><div id="bname"></div><div class="bar"><i></i></div></div>
   <div id="banner"><b></b><span></span></div>
   <div id="toasts"></div>
@@ -135,7 +139,7 @@ body.touch #ultw{display:none}
   <div id="hint"></div>
   <div id="dbg"></div>
 </div>
-<div id="flash"></div><div id="vig"></div><div id="evov"></div>
+<div id="bigmap"><div class="bmbox"><canvas id="bmc" width="512" height="512"></canvas><div id="bmleg"></div></div></div><div id="flash"></div><div id="vig"></div><div id="evov"></div>
 <div id="touch"><div id="joy"><i></i></div><button id="bJump">점프</button><button id="bUlt">궁</button><button id="bPause">II</button><button id="actBtn"></button></div>
 <div id="ov"></div>
 <div id="err"></div><div id="err2"></div>
@@ -1103,17 +1107,112 @@ water.rotation.x = -Math.PI / 2; water.position.set(N / 2, 2 - .12, N / 2); wate
 const outside = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshBasicMaterial({ color: 0x7a5fcf }));
 outside.rotation.x = -Math.PI / 2; outside.position.set(N / 2, -.05, N / 2); outside.renderOrder = -1; scene.add(outside);
 
-const miniBg = document.createElement('canvas'); miniBg.width = miniBg.height = 96;
+// ---------- 지도 (참고 게임식: 시점 따라 도는 원형 미니맵 + 탐험한 곳만 보이는 안개 + Tab으로 보는 큰 지도) ----------
+const mapTerr = document.createElement('canvas'); mapTerr.width = mapTerr.height = N;
+const mapSeen = document.createElement('canvas'); mapSeen.width = mapSeen.height = N;
+const SEEN_R = 30, RADAR = 42, seenGrid = new Uint8Array((N >> 1) * (N >> 1));
+const MZ = [22, 34, 52];   // 미니맵이 보여 주는 반지름(m): 확대 / 보통 / 축소
+const mapUI = { big: false, zoom: 1, mz: 1, north: false, t: 0 };
+try { mapUI.north = localStorage.getItem('dk.north') === '1'; mapUI.mz = clamp(+(localStorage.getItem('dk.mz') ?? 1) | 0, 0, 2); } catch (_) { }
+const MAPKIND = {
+  guardianAltar: { c: '#ff3a4a', s: 'dia', r: 5, always: 1 }, portal: { c: '#c070ff', s: 'ring', r: 5, always: 1 },
+  chest: { c: '#ffd23a', s: 'sq', r: 3.5 }, peddler: { c: '#ffb04a', s: 'sq', r: 3.5 }, freeChest: { c: '#fff0a0', s: 'sq', r: 3 }, cursedChest: { c: '#9a50e0', s: 'sq', r: 3 },
+  runeStone: { c: '#2ec8e0', s: 'tri', r: 3.5 }, challengeAltar: { c: '#ff8a2a', s: 'dia', r: 3.5 }, phantomAltar: { c: '#b040ff', s: 'dia', r: 3.5 },
+  swapAltar: { c: '#3ae8d0', s: 'dia', r: 3.5 }, cursedAltar: { c: '#7a2aff', s: 'dia', r: 3.5 }, goldOre: { c: '#ffe066', s: 'dot', r: 2 }, berryBush: { c: '#ff9ad0', s: 'dot', r: 2 },
+};
 function buildMinimap() {
-  const ctx = miniBg.getContext('2d'), id = ctx.createImageData(96, 96);
+  const ctx = mapTerr.getContext('2d'), id = ctx.createImageData(N, N);
   const TC = [[64, 150, 112], [64, 150, 112], [226, 194, 132], [214, 168, 112], [234, 240, 255], [234, 240, 255], [120, 118, 152]];
-  for (let my = 0; my < 96; my++) for (let mx = 0; mx < 96; mx++) {
-    const x = Math.floor(mx / 96 * N), y = Math.floor(my / 96 * N), i = y * N + x, h = hmap[i];
-    let c = h < 2 ? [61, 95, 214] : solid[i] ? [30, 80, 60] : TC[ttype[i]].map(v => v * (.55 + h / 16));
-    const k = (my * 96 + mx) * 4; id.data[k] = c[0]; id.data[k + 1] = c[1]; id.data[k + 2] = c[2]; id.data[k + 3] = 255;
+  for (let i = 0; i < N * N; i++) {
+    const h = hmap[i], c = h < 2 ? [61, 95, 214] : solid[i] ? [30, 80, 60] : TC[ttype[i]].map(v => v * (.55 + h / 16));
+    id.data[i * 4] = c[0]; id.data[i * 4 + 1] = c[1]; id.data[i * 4 + 2] = c[2]; id.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(id, 0, 0);
+  mapSeen.getContext('2d').clearRect(0, 0, N, N); seenGrid.fill(0); mapUI.t = 0;
 }
+function revealMap() {
+  const c = mapSeen.getContext('2d'); c.save(); c.beginPath(); c.arc(P.x, P.y, SEEN_R, 0, 6.2832); c.clip(); c.drawImage(mapTerr, 0, 0); c.restore();
+  const g = N >> 1, r = SEEN_R >> 1;
+  for (let y = Math.max(0, (P.y >> 1) - r); y <= Math.min(g - 1, (P.y >> 1) + r); y++) for (let x = Math.max(0, (P.x >> 1) - r); x <= Math.min(g - 1, (P.x >> 1) + r); x++) if ((x * 2 + 1 - P.x) ** 2 + (y * 2 + 1 - P.y) ** 2 <= SEEN_R * SEEN_R) seenGrid[y * g + x] = 1;
+}
+const seenAt = (x, y) => x >= 0 && y >= 0 && x < N && y < N && seenGrid[(Math.floor(y) >> 1) * (N >> 1) + (Math.floor(x) >> 1)] === 1;
+function mapShape(c, s, x, y, r, col, a = 1) {
+  c.globalAlpha = a; c.fillStyle = col; c.strokeStyle = col; c.lineWidth = Math.max(1, r * .35);
+  c.beginPath();
+  if (s === 'dia') { c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.fill(); c.strokeStyle = '#140f2a'; c.lineWidth = 1; c.stroke(); }
+  else if (s === 'ring') { c.arc(x, y, r, 0, 6.2832); c.stroke(); c.beginPath(); c.arc(x, y, r * .35, 0, 6.2832); c.fill(); }
+  else if (s === 'tri') { c.moveTo(x, y - r); c.lineTo(x + r, y + r * .8); c.lineTo(x - r, y + r * .8); c.closePath(); c.fill(); }
+  else if (s === 'sq') { c.fillRect(x - r * .8, y - r * .8, r * 1.6, r * 1.6); }
+  else { c.arc(x, y, r, 0, 6.2832); c.fill(); }
+  c.globalAlpha = 1;
+}
+// S: 캔버스 한 변(px), (cx,cy): 화면 가운데에 올 월드 좌표, half: 가운데에서 가장자리까지 m, rot: 시점 방향이 위로 오게 돌림, big: 큰 지도
+function drawMap(c, S, cx, cy, half, rot, big) {
+  const sc = S / (2 * half), ang = rot ? -Math.PI / 2 - CAM.yaw : 0, ca = Math.cos(ang), sa = Math.sin(ang);
+  const w2s = (x, y) => { const dx = x - cx, dy = y - cy; return [(dx * ca - dy * sa) * sc + S / 2, (dx * sa + dy * ca) * sc + S / 2]; };
+  c.clearRect(0, 0, S, S); c.fillStyle = '#120f1d'; c.fillRect(0, 0, S, S);
+  c.save(); c.imageSmoothingEnabled = false; c.translate(S / 2, S / 2); c.rotate(ang); c.scale(sc, sc); c.translate(-cx, -cy); c.drawImage(mapSeen, 0, 0); c.restore();
+  const inside = (sx, sy, m = 0) => big ? (sx > m && sy > m && sx < S - m && sy < S - m) : ((sx - S / 2) ** 2 + (sy - S / 2) ** 2 < (S / 2 - m) ** 2);
+  const ps = big ? 1.5 : 1;
+  // 몬스터: 가까운 것만(레이더). 정예·거대·우두머리·보스는 크게
+  for (let i = 0; i < E.n; i++) {
+    if (E.dead[i]) continue; const dx = E.x[i] - P.x, dy = E.y[i] - P.y; if (dx * dx + dy * dy > RADAR * RADAR) continue;
+    const [sx, sy] = w2s(E.x[i], E.y[i]); if (!inside(sx, sy, 1)) continue; const fl = E.fl[i];
+    if (fl & BOSS) mapShape(c, 'dia', sx, sy, 5 * ps, '#ff2a3a'); else if (fl & MINI) mapShape(c, 'sq', sx, sy, 3.6 * ps, '#c070ff');
+    else if (fl & GIANT) mapShape(c, 'dot', sx, sy, 3.6 * ps, '#ff2a3a'); else if (fl & ELITE) mapShape(c, 'dot', sx, sy, 2.2 * ps, '#ffd23a');
+    else { c.fillStyle = (fl & SHINY) ? '#ffe066' : 'rgba(255,90,110,.95)'; c.fillRect(sx - .8 * ps, sy - .8 * ps, 1.6 * ps, 1.6 * ps); }
+  }
+  // 오브젝트: 수호자 제단·포털은 늘 보이고(가장자리에선 방향 표시), 나머지는 본 곳만
+  for (const o of G.objects) {
+    const K = MAPKIND[o.kind]; if (!K || (o.used && o.kind !== 'portal')) continue;
+    if (o.kind === 'guardianAltar' && G.boss) continue;
+    if (!K.always && !seenAt(o.x, o.y)) continue;
+    let [sx, sy] = w2s(o.x, o.y), r = K.r * ps;
+    if (!inside(sx, sy, r)) {
+      if (!K.always) continue;
+      const dx = sx - S / 2, dy = sy - S / 2, d = Math.hypot(dx, dy) || 1, R = (big ? S / 2 : S / 2) - r - 2;
+      sx = big ? clamp(sx, r + 2, S - r - 2) : S / 2 + dx / d * R; sy = big ? clamp(sy, r + 2, S - r - 2) : S / 2 + dy / d * R; r *= .8;
+    }
+    mapShape(c, K.s, sx, sy, r, K.c);
+  }
+  const bi = G.boss && G.boss.alive ? idxOf(G.boss.uid) : -1;
+  if (bi >= 0) { let [sx, sy] = w2s(E.x[bi], E.y[bi]); if (!inside(sx, sy, 5)) { const dx = sx - S / 2, dy = sy - S / 2, d = Math.hypot(dx, dy) || 1; sx = big ? clamp(sx, 7, S - 7) : S / 2 + dx / d * (S / 2 - 7); sy = big ? clamp(sy, 7, S - 7) : S / 2 + dy / d * (S / 2 - 7); } mapShape(c, 'dia', sx, sy, 5.5 * ps, '#ff2a3a'); }
+  // 나: 흰 화살표(바라보는 방향)
+  const [px, py] = w2s(P.x, P.y), pa = Math.atan2(P.dir[1], P.dir[0]) + ang + Math.PI / 2;
+  c.save(); c.translate(px, py); c.rotate(pa); c.fillStyle = '#ffffff'; c.strokeStyle = '#140f2a'; c.lineWidth = 1;
+  const a = big ? 6 : 4.5; c.beginPath(); c.moveTo(0, -a); c.lineTo(a * .75, a * .8); c.lineTo(0, a * .35); c.lineTo(-a * .75, a * .8); c.closePath(); c.fill(); c.stroke(); c.restore();
+  if (!big) { c.fillStyle = '#ffffff'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; const [nx, ny] = w2s(cx, cy - half * .86); c.fillText('N', nx, ny + 3); }
+}
+function drawMinimap() {
+  if (!P) return;
+  drawMap(hud.mini, 128, P.x, P.y, MZ[mapUI.mz], !mapUI.north, false);
+  const bm = $('bigmap'), show = mapUI.big && G.state === 'play';
+  if (bm.classList.contains('on') !== show) bm.classList.toggle('on', show);
+  if (show) {
+    const z = mapUI.zoom, half = N / 2 / z, cx = z > 1 ? clamp(P.x, half, N - half) : N / 2, cy = z > 1 ? clamp(P.y, half, N - half) : N / 2;
+    drawMap($('bmc').getContext('2d'), 512, cx, cy, half, false, true);
+  }
+}
+const MAPLEG = [['#ffffff', '나', 'arrow'], ['#ff3a4a', '수호자 제단·수호자', 'dia'], ['#c070ff', '포털', 'ring'], ['#ffd23a', '꿈 상인·상자', 'sq'], ['#2ec8e0', '룬 비석', 'tri'], ['#ff8a2a', '도전·악몽·저울·저주 제단', 'dia'], ['#ff5a6e', '몬스터', 'dot'], ['#ffd23a', '정예', 'dot'], ['#ff2a3a', '거대 개체', 'dot'], ['#c070ff', '우두머리·마술사', 'sq']];
+(() => {
+  const L = document.getElementById('bmleg'); if (!L) return;
+  L.innerHTML = MAPLEG.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('') + '<small>탐험한 곳만 보여요 · 수호자 제단과 포털은 늘 표시 · Tab 누르는 동안 보기, +/− 확대, M 고정, N 북쪽 위</small>';
+  const setBig = v => { if (G && G.state === 'play') { mapUI.big = v; if (!v) mapUI.zoom = 1; } };
+  addEventListener('keydown', e => {
+    if (!G || G.state !== 'play' || e.repeat) return;
+    if (e.code === 'Tab') { e.preventDefault(); setBig(true); }
+    else if (e.code === 'KeyM') setBig(!mapUI.big);
+    else if (e.code === 'KeyN') { mapUI.north = !mapUI.north; try { localStorage.setItem('dk.north', mapUI.north ? '1' : '0'); } catch (_) { } toast(mapUI.north ? '지도: 북쪽이 위' : '지도: 시점이 위'); }
+    else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (mapUI.big) mapUI.zoom = Math.min(3, mapUI.zoom + .5); else mapUI.mz = Math.max(0, mapUI.mz - 1); try { localStorage.setItem('dk.mz', mapUI.mz); } catch (_) { } }
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract') { if (mapUI.big) mapUI.zoom = Math.max(1, mapUI.zoom - .5); else mapUI.mz = Math.min(2, mapUI.mz + 1); try { localStorage.setItem('dk.mz', mapUI.mz); } catch (_) { } }
+  });
+  addEventListener('keyup', e => { if (e.code === 'Tab') { e.preventDefault(); if (mapUI.big) { mapUI.big = false; mapUI.zoom = 1; } } });
+  addEventListener('blur', () => { mapUI.big = false; });
+  document.getElementById('mini').addEventListener('click', () => setBig(!mapUI.big));
+  document.getElementById('mapB').addEventListener('click', e => { setBig(!mapUI.big); e.currentTarget.blur(); });
+  document.getElementById('bigmap').addEventListener('click', () => { mapUI.big = false; mapUI.zoom = 1; });
+})();
+
 function applyLook(zi) {
   const Z = ZONES[zi];
   U.uSkyTop.value.set(Z.skyTop); U.uSkyBot.value.set(Z.skyBot); U.uFogColor.value.set(Z.fog);
@@ -2905,18 +3004,8 @@ function updateHUD(dt) {
   const b = G.boss;
   if (b && b.alive) { const i = idxOf(b.uid); if (i >= 0) { hud.boss.style.display = 'block'; hud.bname.textContent = b.def.name; hud.boss.querySelector('i').style.width = (E.hp[i] / E.mhp[i] * 100) + '%'; hud.boss.querySelector('i').style.background = b.enraged ? '#ff3a3a' : ''; hud.bname.textContent = b.def.name + (b.enraged ? ' · 분노' : ''); } }
   else hud.boss.style.display = 'none';
-  const m = hud.mini; m.drawImage(miniBg, 0, 0);
-  const k = 96 / N;
-  m.fillStyle = 'rgba(255,90,110,.9)'; for (let i = 0; i < E.n; i += 2) m.fillRect(E.x[i] * k, E.y[i] * k, 1, 1);
-  m.fillStyle = '#ff2a3a'; for (let i = 0; i < E.n; i++) if (E.fl[i] & GIANT && !E.dead[i]) m.fillRect(E.x[i] * k - 2.5, E.y[i] * k - 2.5, 5, 5);
-  for (const o of G.objects) {
-    if (o.used && o.kind !== 'portal') continue;
-    m.fillStyle = o.kind === 'guardianAltar' ? '#ff3a4a' : o.kind === 'runeStone' ? '#2ec8e0' : o.kind === 'portal' ? '#c070ff' : o.kind.includes('hest') ? '#ffd23a' : null;
-    if (m.fillStyle && (o.kind === 'guardianAltar' || o.kind === 'runeStone' || o.kind === 'portal' || o.kind.includes('hest'))) m.fillRect(o.x * k - 2, o.y * k - 2, o.kind === 'guardianAltar' ? 5 : 3, o.kind === 'guardianAltar' ? 5 : 3);
-  }
-  for (const o of G.objects) if (!o.used && BEACON[o.kind] && !['guardianAltar', 'runeStone', 'portal', 'chest', 'freeChest', 'goldOre', 'berryBush'].includes(o.kind)) { m.fillStyle = BEACON[o.kind].c; m.fillRect(o.x * k - 1.5, o.y * k - 1.5, 3, 3); }
-  m.fillStyle = '#c070ff'; for (const mn of G.minis) { const q = idxOf(mn.uid); if (q >= 0) m.fillRect(E.x[q] * k - 2, E.y[q] * k - 2, 4, 4); }
-  m.fillStyle = '#ffffff'; m.fillRect(P.x * k - 1.5, P.y * k - 1.5, 3, 3);
+  mapUI.t -= dt; if (mapUI.t <= 0) { mapUI.t = .2; revealMap(); }
+  drawMinimap();
   if (DEBUG) { fpsS = lerp(fpsS, 1 / Math.max(dt, 1e-3), .05); hud.dbg.textContent = `FPS ${fpsS.toFixed(0)}\n적 ${E.n}\n드로우콜 ${renderer.info.render.calls}`; }
 }
 const AMB = [

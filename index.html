@@ -31,6 +31,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 .bmbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px;border-radius:14px;background:rgba(18,15,29,.9);border:1px solid var(--line)}
 #bmc{width:min(62vmin,560px);height:min(62vmin,560px);image-rendering:pixelated;border-radius:8px}
 #bmleg{display:flex;flex-wrap:wrap;gap:4px 12px;max-width:min(62vmin,560px);font-size:12px;justify-content:center}#bmleg i{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:2px}#bmleg small{width:100%;text-align:center;color:var(--sub)}
+.rank{margin:6px 0;font-size:13px;text-align:left}.rrow{display:grid;grid-template-columns:26px 1fr auto auto;gap:4px 10px;padding:4px 8px;border-radius:6px;align-items:center}.rrow:nth-child(odd){background:rgba(255,255,255,.05)}.rrow.me{outline:1px solid var(--gold);background:rgba(255,210,58,.12)}.rrow .rn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rrow .rk{grid-column:2/5;font-size:11px;color:var(--sub)}.rankSub{display:flex;gap:8px;justify-content:center;margin:8px 0}.rankSub input{background:#1b1730;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit;width:44%;min-width:120px}
 #bossbar{position:absolute;left:50%;top:84px;width:min(440px,70vw);transform:translateX(-50%);display:none;text-align:center;font-size:13px}
 #bossbar .bar{height:12px;margin-top:3px}#bossbar .bar>i{background:#ff5a8a}
 #banner{position:absolute;left:0;right:0;top:38%;text-align:center;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(8px)}
@@ -213,9 +214,9 @@ const SKILLS = [
 const SKILL_BY = Object.fromEntries(SKILLS.map(s => [s.id, s]));
 
 const HERO_ALL = [
-  { id: 'pyro', el: 'fire', hp: 95, passive: [['statusDamage', 'mul', .25]], passiveDesc: '상태이상 피해 +25%', names: ['불씨 꿈지기', '촛불 기사', '태양 기사'], skills: ['fire_arrow', 'lava_lump', 'flame_jet', 'heat_burst'], cape: '#ff7a3a', eye: '#ffc070' },
-  { id: 'tide', el: 'water', hp: 120, passive: [['armor', 'add', 6]], passiveDesc: '방어력 +6', names: ['이슬 꿈지기', '물결 기사', '밀물 기사'], skills: ['water_arrow', 'bubble_spray', 'jet_stream', 'whirl_wave'], cape: '#4aa8ff', eye: '#a6deff' },
-  { id: 'grove', el: 'forest', hp: 105, passive: [['regen', 'add', .6]], passiveDesc: 'HP 재생 +0.6/s', names: ['새싹 꿈지기', '숲 기사', '고목 기사'], skills: ['thorn_seed', 'bramble_slash', 'acorn_bomb', 'petal_ring'], cape: '#6ad04a', eye: '#c0ff90' },
+  { id: 'pyro', el: 'fire', hp: 95, passive: [['statusDamage', 'mul', .25]], passiveDesc: '상태이상 피해 +25%', names: ['악몽 탐험가', '악몽 탐험가', '악몽 탐험가'], skills: ['fire_arrow', 'lava_lump', 'flame_jet', 'heat_burst'], cape: '#ff7a3a', eye: '#ffc070' },
+  { id: 'tide', el: 'water', hp: 120, passive: [['armor', 'add', 6]], passiveDesc: '방어력 +6', names: ['악몽 탐험가', '악몽 탐험가', '악몽 탐험가'], skills: ['water_arrow', 'bubble_spray', 'jet_stream', 'whirl_wave'], cape: '#4aa8ff', eye: '#a6deff' },
+  { id: 'grove', el: 'forest', hp: 105, passive: [['regen', 'add', .6]], passiveDesc: 'HP 재생 +0.6/s', names: ['악몽 탐험가', '악몽 탐험가', '악몽 탐험가'], skills: ['thorn_seed', 'bramble_slash', 'acorn_bomb', 'petal_ring'], cape: '#6ad04a', eye: '#c0ff90' },
 ];
 // DECISION: 사용자 지시로 파란 꿈지기(이슬)만 남긴다. 나머지 둘은 데이터만 보존
 const HEROES = HERO_ALL.filter(h => h.id === 'tide');
@@ -360,7 +361,7 @@ const STR = {
   medals: ['챔피언', '골드', '실버', '브론즈'],
   actOpen: '열기', actOpenPrice: '거래 · {p}◆', actWake: '수호자 깨우기', actBreak: '깨기', actPick: '따기', actPortal: '구역 {n}로 이동', actClear: '지역 클리어',
   pAltar: 'E · 수호자 깨우기', pChest: 'E · 꿈 상인과 거래 ({p}◆)', pChestNo: '코인이 부족해요 ({p}◆)', pFree: 'E · 무료 상자 열기', pOre: 'E · 꿈 결정 바위 깨기',
-  pBerry: 'E · 달맞이 열매 따기 (HP 50%)', pPortal: 'E · 구역 {n}로 이동', pPortalLast: 'E · 지역 클리어', pRune: '비석 충전 중 {p}%',
+  pBerry: 'E · 행복한 꿈 열매 따기 (HP 50%)', pPortal: 'E · 구역 {n}로 이동', pPortalLast: 'E · 지역 클리어', pRune: '비석 충전 중 {p}%',
   locked: '잠김', lockZone: '구역 2', loadFail: '3D 라이브러리를 불러오지 못했어요. 새로고침해 주세요.',
   stat: { damage: '피해', maxHp: '최대 HP', attackSpeed: '공격 속도', moveSpeed: '이동 속도', critChance: '크리티컬 확률', area: '범위', regen: 'HP 재생', luck: '행운', xpGain: '경험치', armor: '방어력', physical: '물리 피해', magic: '마법 피해', projectiles: '투사체', statusChance: '상태 확률' },
   reactions: { overload: '과충전', steam: '증기 폭발', wildfire: '들불', shatter: '산산조각', toxicBurn: '유독 연소', collapse: '비전 붕괴' },
@@ -1371,6 +1372,7 @@ const CAM = { yaw: Math.PI / 2, pitch: .45, dist: 9, tx: CX, ty: CY, tz: 3, lift
 const ptr = { joyId: null, ox: 0, oy: 0, jx: 0, jy: 0, camId: null, lx: 0, ly: 0 };
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') { if (e.code === 'Escape') e.target.blur(); return; }   // 닉네임 입력 중
   // DECISION: Enter도 기본 동작을 막는다. 포커스가 남은 버튼이 Enter로 한 번 더 눌려 시작·선택이 겹치는 것을 막기 위해
   if (['Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
   if (e.code === 'NumpadEnter' && !e.repeat) { onKey('Enter'); return; }
@@ -1565,7 +1567,7 @@ function newRun(skillIdx, diffIdx) {
     state: 'play', zone: 1, zoneTime: 0, time: 0, kills: 0, coins: 0, dmgTotal: 0, bosses: 0, diffIdx, diff: DIFFS[diffIdx], weather: 'clear',
     timeline: [], tlI: 0, pool: [], eligible: [], credits: 0, objects: [], boss: null, ult: 0, ultBuf: .024, levelQueue: 0, chestsBought: 0,
     hitstop: 0, trauma: 0, flood: false, log: [], nextUid: 1, reactCd: {}, rainT: 0, blessT: 0, ultReadyShown: false, flashA: 0, flashC: '#ffffff',
-    banished: new Set(), heroIdx, modalT: 0, jumps: 0, highT: 0, won: false,
+    skillIdx: START_SKILLS[skillIdx] ? skillIdx : 1, banished: new Set(), heroIdx, modalT: 0, jumps: 0, highT: 0, won: false,
     dpsWin: [], dpsT: 0, dpsLast: 0, later: [], hz: [], ln: [], pools: [], sw: [], lanes: [], minis: [], ev: null, evK: 0, evLook: null, evDone: new Set(), curses: [], phantom: 0, challenge: null, firstElite: false,
   };
   P = {
@@ -3289,7 +3291,7 @@ function showTitle() {
   showPanel(`<div class="panel"><div id="heroPic"></div><h1>${STR.title}</h1><p>${HEROES[0].names[0]} · HP ${HEROES[0].hp} · ${HEROES[0].passiveDesc}</p>
     <div class="sub">${STR.pickSkill}</div><div class="cards" id="heroCards"></div>
     <div class="sub">${STR.pickDiff}</div><div class="row" id="diffRow" style="margin:8px 0 14px"></div>
-    <button class="btn on" id="startBtn">${STR.start}</button><p class="pcOnly" style="margin-top:10px">${STR.titleKeys}</p></div>`);
+    <button class="btn on" id="startBtn">${STR.start}</button> <button class="btn" id="rankB">랭킹</button><p class="pcOnly" style="margin-top:10px">${STR.titleKeys}</p></div>`);
   $('heroPic').appendChild(heroCanvas(0, 3));
   START_SKILLS.forEach((id, i) => {
     const d = SKILL_BY[id], b = document.createElement('button'); b.className = 'card'; b.dataset.i = i;
@@ -3298,7 +3300,7 @@ function showTitle() {
     $('heroCards').appendChild(b);
   });
   DIFFS.forEach((d, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = d.name; b.onclick = () => { menuSel.diff = i; refreshTitle(); }; $('diffRow').appendChild(b); });
-  $('startBtn').onclick = startGame;
+  $('startBtn').onclick = startGame; $('rankB').onclick = showRanking;
   refreshTitle();
 }
 function refreshTitle() {
@@ -3391,18 +3393,65 @@ function openPause() {
   $('resB').onclick = resume; $('quitB').onclick = () => gameOver(false);
 }
 function resume() { if (G.state === 'pause') { closeModal(); G.state = 'play'; } }
+// ---------- 랭킹 (깃에 저장: ranking.json을 읽고, 등록은 GitHub 이슈 → 액션이 ranking.json에 더함) ----------
+const RANK = { url: 'https://raw.githubusercontent.com/Katonea/dream-knight/main/ranking.json', issue: 'https://github.com/Katonea/dream-knight/issues/new' };
+let rankCache = null;
+function loadRanking() {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = setTimeout(() => ctl && ctl.abort(), 6000);
+  return fetch(RANK.url + '?t=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => { clearTimeout(to); rankCache = (j.entries || []).slice().sort((a, b) => b.score - a.score || a.time - b.time); return rankCache; })
+    .catch(() => { clearTimeout(to); return null; });
+}
+function localBest() { try { return JSON.parse(localStorage.getItem('dk.rank') || '[]'); } catch (_) { return []; } }
+function saveLocal(rec) { try { const a = localBest(); a.push(rec); a.sort((x, y) => y.score - x.score || x.time - y.time); localStorage.setItem('dk.rank', JSON.stringify(a.slice(0, 10))); } catch (_) { } }
+const rankRow = (e, i, mine) => `<div class="rrow${mine ? ' me' : ''}"><b>${i + 1}</b><span class="rn">${String(e.name).replace(/[<>&]/g, '')}</span><span>${(+e.score).toLocaleString()}점</span><span>${fmtTime(e.time)}</span><span class="rk">${(SKILL_BY[e.skill] || {}).name || ''} · ${DIFFS[e.diff] ? DIFFS[e.diff].name : ''}</span></div>`;
+function rankHTML(list, rec) {
+  if (!list) {
+    const mine = localBest();
+    return `<p class="sub">랭킹을 불러오지 못했어요(오프라인이거나 막힌 환경). 이 기기의 기록만 보여요.</p>` + (mine.length ? mine.map((e, i) => rankRow(e, i, rec && e.score === rec.score && e.time === rec.time)).join('') : '<p class="sub">아직 기록이 없어요</p>');
+  }
+  const top = list.slice(0, 10);
+  let html = top.length ? top.map((e, i) => rankRow(e, i, rec && e.name === rec.name && e.score === rec.score && e.time === rec.time)).join('') : '<p class="sub">아직 올라온 기록이 없어요. 첫 번째가 되어 보세요!</p>';
+  if (rec) { const rk = list.filter(e => e.score > rec.score || (e.score === rec.score && e.time <= rec.time)).length + 1; html += `<p class="sub">지금 기록은 등록하면 <b>${rk}위</b>예요 (전체 ${list.length + 1}명)</p>`; }
+  return html;
+}
+function issueURL(rec) {
+  const p = { template: 'ranking.yml', title: `[랭킹] ${rec.name} ${rec.score}점`, name: rec.name, record: JSON.stringify({ score: rec.score, time: rec.time, kills: rec.kills, level: rec.level, diff: rec.diff, skill: rec.skill, dmg: rec.dmg, bosses: rec.bosses, zone: rec.zone, ver: '2.2' }) };
+  return RANK.issue + '?' + Object.entries(p).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+}
+function showRanking() {
+  G = { state: 'rank' };
+  showPanel(`<div class="panel"><h2>랭킹</h2><p class="sub">지역을 클리어한 기록 · 점수 순</p><div id="rankBox" class="rank"><p class="sub">불러오는 중…</p></div><div class="tools"><button class="btn on" id="rankX">닫기 (Esc)</button></div></div>`);
+  $('rankX').onclick = showTitle;
+  loadRanking().then(l => { const b = $('rankBox'); if (b && G.state === 'rank') b.innerHTML = rankHTML(l, null); });
+}
 function gameOver(win) {
   G.state = 'over'; G.won = win; sfx(win ? 'win' : 'curse'); vib(win ? [80, 40, 80] : 200); logEv(win ? 'win' : 'lose', G.zone);
   logEv('summary', { jumps: G.jumps, highGroundSec: +G.highT.toFixed(1), time: +G.time.toFixed(1), kills: G.kills, lvl: P.lvl });
   if (SIM) return;
-  const score = Math.round((G.kills * 2 + G.time * 3 + G.dmgTotal / 200 + (G.zone - 1) * 1500 + G.bosses * 800 + (win ? 6000 : 0)) * (1 + .5 * G.diffIdx));
+  const t1 = +G.time.toFixed(1), dmg = Math.round(G.dmgTotal);
+  const score = Math.round((G.kills * 2 + t1 * 3 + dmg / 200 + (G.zone - 1) * 1500 + G.bosses * 800 + (win ? 6000 : 0)) * (1 + .5 * G.diffIdx));
+  const rec = { score, time: t1, kills: G.kills, level: P.lvl, diff: G.diffIdx, skill: START_SKILLS[G.skillIdx ?? 1], dmg, bosses: G.bosses, zone: G.zone };
+  let savedName = ''; try { savedName = localStorage.getItem('dk.name') || ''; } catch (_) { }
   let medal = '';
   if (win) { const r = 1 + .05 * G.diffIdx, t = G.time; medal = STR.medals[t <= 630 * r ? 0 : t <= 900 * r ? 1 : t <= 1260 * r ? 2 : 3]; }
   showPanel(`<div class="panel"><h1>${win ? STR.win : STR.lose}</h1><p>${P.hero.names[P.awaken]} · ${G.diff.name}</p>
     <div class="stat"><div><span class="sub">${STR.score}</span><b>${score.toLocaleString()}</b></div><div><span class="sub">${STR.time}</span><b>${fmtTime(G.time)}</b></div><div><span class="sub">${STR.kills}</span><b>${G.kills}</b></div>
     <div><span class="sub">${STR.level}</span><b>${P.lvl}</b></div><div><span class="sub">${STR.bosses}</span><b>${G.bosses}</b></div><div><span class="sub">${STR.medal}</span><b>${medal || '—'}</b></div></div>
     <p>${STR.scoreFormula}</p>
+    ${win ? `<h3 style="margin:10px 0 4px">랭킹</h3><div id="rankBox" class="rank"><p class="sub">불러오는 중…</p></div>
+    <div class="rankSub"><input id="nameIn" maxlength="12" placeholder="닉네임(12자)" value="${savedName.replace(/["<>&]/g, '')}"><button class="btn on" id="subB">랭킹에 등록</button></div>
+    <p class="sub" id="subHint">등록하려면 GitHub 로그인이 필요해요(열리는 화면에서 Submit만 누르면 돼요)</p>` : ''}
     <div class="tools"><button class="btn on" id="againB">${STR.retry}</button><button class="btn" id="logB">${STR.copyLog}</button></div></div>`);
+  if (win) {
+    saveLocal(rec); loadRanking().then(l => { const b = $('rankBox'); if (b && G.state === 'over') b.innerHTML = rankHTML(l, rec); });
+    $('subB').onclick = () => {
+      const nm = $('nameIn').value.replace(/[<>&"'`\\]/g, '').trim().slice(0, 12); if (!nm) { toast('닉네임을 입력하세요'); return; }
+      try { localStorage.setItem('dk.name', nm); } catch (_) { } rec.name = nm; const url = issueURL(rec);
+      $('subHint').innerHTML = `새 창이 안 열리면 <a href="${url}" target="_blank" rel="noopener" style="color:var(--gold)">여기를 눌러 등록 화면 열기</a> · 몇 분 뒤 랭킹에 보여요`;
+      try { window.open(url, '_blank', 'noopener'); } catch (_) { }
+    };
+  }
   $('againB').onclick = showTitle;
   $('logB').onclick = () => { try { navigator.clipboard.writeText(JSON.stringify(G.log)); toast(STR.copied); } catch (_) { } };
 }
@@ -3425,6 +3474,7 @@ function onKey(code) {
   } else if (s === 'pause') {
     if (code === 'Escape' || code === 'KeyP') resume(); else if (code === 'KeyQ') gameOver(false);
   } else if (s === 'over') { if (code === 'Enter') showTitle(); }
+  else if (s === 'rank') { if (code === 'Enter' || code === 'Escape') showTitle(); }
 }
 
 // ---------- loop ----------

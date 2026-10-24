@@ -1,0 +1,24 @@
+name: 랭킹 등록
+description: 지역 클리어 기록을 랭킹에 올려요 (게임이 알아서 채워 줘요)
+title: "[랭킹] "
+labels: ["ranking"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        게임의 **"랭킹에 등록"** 버튼으로 열린 화면이에요. 내용은 고치지 말고 아래 **Submit new issue**만 누르면 돼요.
+        몇 초 뒤 자동으로 `ranking.json`에 올라가고, 이 이슈는 알아서 닫혀요.
+  - type: input
+    id: name
+    attributes:
+      label: 닉네임
+      description: 12자까지
+    validations:
+      required: true
+  - type: textarea
+    id: record
+    attributes:
+      label: 기록
+      description: 게임이 채워 준 값이에요. 고치면 등록되지 않아요.
+    validations:
+      required: true

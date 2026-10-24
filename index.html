@@ -339,7 +339,7 @@ const STR = {
   title: '꿈지기 기사', subtitle: '밤의 꿈나라에 번진 악몽을 쓸어내요',
   pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
   zoneBanner: '구역 {z} / {name}', zoneSub: '{weather}', slot4: '네 번째 기술 슬롯 해금',
-  hint: 'Space 점프(공중 점프는 바람 망토를 먹어야) · 마우스 드래그 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
+  hint: 'Space 점프(공중 점프는 바람 망토를 먹어야) · 마우스 이동 시점 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
   newMob: '새 몬스터 등장: {name}', giant: '거대 개체 출현!', giantSub: '쓰러뜨리면 보상 상자',
   surround: '포위당했어요!', charge: '떼돌격!', eliteWave: '정예 웨이브', eliteSub: '금빛 테두리를 조심하세요',
   flood: '대범람!', floodSub: '시간이 다 됐어요. 서둘러 수호자를!',
@@ -1242,7 +1242,7 @@ glCv.addEventListener('pointerdown', e => {
   const [cx, cy] = joyCenter(), near = Math.hypot(e.clientX - cx, e.clientY - cy) < 135;
   const leftLow = e.clientX < innerWidth * .4 && e.clientY > innerHeight * .4;
   if (e.pointerType === 'touch' && ptr.joyId === null && (near || leftLow)) { ptr.joyId = e.pointerId; joyMove(e.clientX, e.clientY); }
-  else if (ptr.camId === null) { ptr.camId = e.pointerId; ptr.lx = e.clientX; ptr.ly = e.clientY; }
+  else if (ptr.camId === null && e.pointerType !== 'mouse') { ptr.camId = e.pointerId; ptr.lx = e.clientX; ptr.ly = e.clientY; }   // 마우스는 아래 mouseLook(클릭 없이 이동만으로 시점)
   try { glCv.setPointerCapture(e.pointerId); } catch (_) { }
 });
 glCv.addEventListener('pointermove', e => {
@@ -1251,6 +1251,22 @@ glCv.addEventListener('pointermove', e => {
     CAM.yaw += (e.clientX - ptr.lx) * .006; CAM.pitch = clamp(CAM.pitch + (e.clientY - ptr.ly) * .004, .15, 1.05);
     ptr.lx = e.clientX; ptr.ly = e.clientY;
   }
+});
+// PC: 마우스를 움직이기만 해도 시점이 돈다(클릭·드래그 불필요). 가능하면 포인터 잠금으로 커서를 숨기고 화면 가장자리에서도 계속 돈다.
+// 잠금은 키·클릭 직후에만 걸 수 있어서 키 입력·클릭 뒤에 시도한다. 못 걸어도(거부·미지원) 움직임만으로 도는 것은 그대로다.
+let usedMouse = false;
+const lockEl = () => document.pointerLockElement === glCv;
+function tryLock() {
+  if (SIM || !G || G.state !== 'play' || lockEl() || !(usedMouse || !isTouch)) return;
+  try { const r = glCv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (_) { }
+}
+addEventListener('keydown', tryLock); addEventListener('click', tryLock);
+document.addEventListener('pointerlockchange', () => { if (!lockEl() && G && G.state === 'play' && !SIM) openPause(); });
+addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return; usedMouse = true;
+  if (!G || G.state !== 'play' || SIM) return;
+  const mx = e.movementX || 0, my = e.movementY || 0; if ((!mx && !my) || Math.abs(mx) > 300 || Math.abs(my) > 300) return;
+  CAM.yaw += mx * .0035; CAM.pitch = clamp(CAM.pitch + my * .0025, .15, 1.05);
 });
 const ptrEnd = e => {
   if (e.pointerId === ptr.joyId) { ptr.joyId = null; ptr.jx = ptr.jy = 0; joyEl.firstChild.style.transform = ''; }
@@ -3172,6 +3188,7 @@ function reportError(e, where) {
 }
 function loop(now) {
   requestAnimationFrame(loop);
+  if (document.pointerLockElement && G.state !== 'play') { try { document.exitPointerLock(); } catch (_) { } }   // 카드·일시정지 화면에서는 커서가 필요하다
   const dt = clamp((now - last) / 1000, 0, .05); last = now;
   try {
     if (G.state === 'play') update(dt);

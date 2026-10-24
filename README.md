@@ -7,4 +7,4 @@
 - 모바일: 화면 왼쪽 절반 드래그 = 이동, 오른쪽 = 카메라, 버튼으로 점프·E·궁극기
 - 디버그: `?debug=1` (FPS·적 수·드로우콜)
 
-`index.html` 한 파일로 동작한다(three.js r128 CDN). 그림은 전부 코드로 찍은 픽셀 아트다. 구현 결과와 기획서 대조는 [REPORT.md](REPORT.md).
+`index.html` 한 파일로 동작한다(three.js r128 CDN). 그림은 전부 코드로 찍은 픽셀 아트다. 에이전트용 기획서는 [docs/기획서.md](docs/기획서.md), 구현 결과 보고는 [REPORT.md](REPORT.md).

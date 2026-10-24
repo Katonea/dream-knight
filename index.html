@@ -244,6 +244,12 @@ const MOBS = [
   ['storm_jelly', '번개 해파리', 'storm', 'flyer', 2, 90, 3.0, 15, 12, 4],
   ['candle_knight', '촛농 기사', 'fire', 'biped', 2, 105, 2.9, 16, 12, 4],
 ].map(([id, name, el, shape, tier, hp, spd, dmg, size, xp]) => ({ id, name, el, shape, tier, hp, spd, dmg, size, xp }));
+// 원거리 몬스터: 사거리 안에서 멈춰 서서 예고(0.45초 빛) 뒤 탄을 쏜다. 피해 = 몬스터 피해 × mul. 높이 차 1.6 m 이상이면 안 맞는다
+const RANGED = {
+  arcane_owl: { range: 9, cd: 3.2, spd: 6, mul: .7, n: 1, col: '#ff6ab0' },
+  toy_robot: { range: 10, cd: 2.8, spd: 8, mul: .6, n: 1, col: '#9ff6ff' },
+  storm_jelly: { range: 9, cd: 3.6, spd: 7, mul: .55, n: 3, col: '#ffd23a' },
+};
 const BOSSES = [
   { id: 'boss1', name: '이끼 이불 거인', el: 'forest', shape: 'biped', size: 24 },
   { id: 'boss2', name: '녹은 촛대 맹수', el: 'fire', shape: 'quad', size: 26 },
@@ -335,14 +341,14 @@ const STR = {
   lvUp: '레벨 업!', lvLeft: '남은 레벨업 {n}', reroll: '새로고침 (F) · {n}', skip: '건너뛰기 (X) · {n}', banish: '추방 (Z) · {n}', banishOn: '추방할 카드를 고르세요',
   tagNew: '새 기술', tagSig: '시그니처 기술', tagUp: '강화 Lv {a} → {b}', tagRune: '룬', tagRuneUp: '룬 Lv {a} → {b}', tagCoin: '코인',
   coinCard: '코인 +{v}', coinDesc: '고를 카드가 없어요', key: '키 {k}',
-  chestTitle: '보물 상자', chestSub: '유물 하나를 고르세요', sell: '팔기 +{v}◆ (S)', relicStack: '보유 {n}/5',
+  chestTitle: '꿈 상인', freeTitle: '보물 상자', chestSub: '유물 하나를 고르세요', sell: '팔기 +{v}◆ (S)', refund: '거절하고 일부 돌려받기 +{v}◆ (S)', relicStack: '보유 {n}/5',
   blessTitle: '가호', blessSub: '판 끝까지 유지돼요',
   pTitle: '일시정지', resume: '계속하기 (Esc)', giveUp: '포기하기 (Q)', buildSkills: '기술', buildRunes: '룬', buildRelics: '유물', buildBless: '가호', none: '없음',
   win: '지역 클리어!', lose: '쓰러졌어요', retry: '다시 하기 (Enter)', copyLog: '로그 복사', copied: '복사했어요',
   score: '점수', time: '시간', kills: '처치', level: '레벨', bosses: '수호자', medal: '메달',
   medals: ['챔피언', '골드', '실버', '브론즈'],
-  actOpen: '열기', actOpenPrice: '열기 · {p}◆', actWake: '수호자 깨우기', actBreak: '깨기', actPick: '따기', actPortal: '구역 {n}로 이동', actClear: '지역 클리어',
-  pAltar: 'E · 수호자 깨우기', pChest: 'E · 보물 상자 열기 ({p}◆)', pChestNo: '코인이 부족해요 ({p}◆)', pFree: 'E · 무료 상자 열기', pOre: 'E · 꿈 결정 바위 깨기',
+  actOpen: '열기', actOpenPrice: '거래 · {p}◆', actWake: '수호자 깨우기', actBreak: '깨기', actPick: '따기', actPortal: '구역 {n}로 이동', actClear: '지역 클리어',
+  pAltar: 'E · 수호자 깨우기', pChest: 'E · 꿈 상인과 거래 ({p}◆)', pChestNo: '코인이 부족해요 ({p}◆)', pFree: 'E · 무료 상자 열기', pOre: 'E · 꿈 결정 바위 깨기',
   pBerry: 'E · 달맞이 열매 따기 (HP 50%)', pPortal: 'E · 구역 {n}로 이동', pPortalLast: 'E · 지역 클리어', pRune: '비석 충전 중 {p}%',
   locked: '잠김', lockZone: '구역 2', loadFail: '3D 라이브러리를 불러오지 못했어요. 새로고침해 주세요.',
   stat: { damage: '피해', maxHp: '최대 HP', attackSpeed: '공격 속도', moveSpeed: '이동 속도', critChance: '크리티컬 확률', area: '범위', regen: 'HP 재생', luck: '행운', xpGain: '경험치', armor: '방어력', physical: '물리 피해', magic: '마법 피해', projectiles: '투사체', statusChance: '상태 확률' },
@@ -785,6 +791,22 @@ Object.assign(ART, {
   pSnow: mk(5, 5, s => { s.line(0, 2, 4, 2, '#ffffff'); s.line(2, 0, 2, 4, '#ffffff'); s.set(2, 2, '#bfefff'); }),
   pShield: mk(12, 14, s => { s.poly([[0, 0], [12, 0], [12, 7], [6, 14], [0, 7]], '#c8d0e8'); s.poly([[2, 2], [10, 2], [10, 7], [6, 11], [2, 7]], '#8a94b8'); s.star(6, 5, GOLD); }),
 });
+Object.assign(ART, {
+  // 꿈 상인: 별무늬 두건을 쓴 졸린 고양이 행상. 등에 병이 든 큰 봇짐, 손에 흔들리는 등불
+  merchant: anim(f => mk(30, 34, s => {
+    s.rect(18, 8, 11, 16, '#8a5a3a'); s.rect(18, 8, 11, 2, '#b07a4a');
+    [[20, 11, '#ff9ad0'], [24, 12, '#9ae8ff'], [21, 17, '#c8ff5a'], [25, 18, GOLD]].forEach(([x, y, c]) => { s.rect(x, y, 3, 4, c); s.set(x, y, '#ffffff'); });
+    s.poly([[5, 33], [8, 12], [20, 12], [23, 33]], '#3b3f8a'); s.poly([[7, 33], [9, 16], [12, 16], [10, 33]], '#4a50a8');
+    [[10, 22], [17, 26], [13, 30], [19, 19]].forEach(([x, y]) => s.set(x, y, '#fff6a0'));
+    s.ell(14, 10, 7.5, 7, '#3b3f8a', 1); s.poly([[8, 6], [9, 0], [12, 5]], '#3b3f8a'); s.poly([[16, 5], [19, 0], [20, 6]], '#3b3f8a');
+    s.ell(14, 11, 5, 4.2, '#f3e2c8', 1); s.set(10, 6, '#ff9ad0'); s.set(18, 6, '#ff9ad0');
+    s.line(11, 11, 12, 11, '#3a2a40'); s.line(16, 11, 17, 11, '#3a2a40'); s.set(14, 13, '#ff8aa0');
+    s.line(3, 14, 3, 30, '#8a5a3a'); s.line(3, 14, 7, 12, '#8a5a3a');
+    s.ell(3, 17 + f, 2.4, 2.8, f ? '#ffe680' : GOLD); s.set(3, 17 + f, '#ffffff');
+    s.ell(9, 22, 2, 2, '#f3e2c8');
+  })),
+  mark: mk(7, 9, s => { s.poly([[3.5, 0], [7, 4], [3.5, 9], [0, 4]], '#ffffff'); s.poly([[3.5, 2], [5, 4], [3.5, 6], [2, 4]], '#e8e8f0'); }),
+});
 const DECO_KEYS = [['deco0a', 'deco0a', 'deco0b'], ['deco1a', 'deco1b', 'deco1a'], ['deco2a', 'deco2a', 'deco2b']];
 HEROES.forEach((h, i) => { for (let st = 0; st < 3; st++) { ART[`h${i}_${st}_f`] = anim(f => knight(h, st, f)); ART[`h${i}_${st}_b`] = anim(f => knightBack(h, st, f)); } });
 
@@ -1193,7 +1215,7 @@ document.getElementById('prompt').addEventListener('pointerdown', e => { if (isT
 // ---------- state ----------
 let G = { state: 'menu' }, P = null, SIM = false;
 const E = { n: 0, uid: new Uint32Array(EMAX), mob: new Uint16Array(EMAX), fl: new Uint8Array(EMAX), dead: new Uint8Array(EMAX) };
-const EF = ['x', 'y', 'z', 'hp', 'mhp', 'dmg', 'spd', 'r', 's', 'kx', 'ky', 'ignite', 'igniteDps', 'toxin', 'toxinDps', 'toxinSt', 'soak', 'jolt', 'frost', 'frostT', 'frozen', 'daze', 'dazeA', 'stun', 'flash', 'anim', 'born'];
+const EF = ['x', 'y', 'z', 'hp', 'mhp', 'dmg', 'spd', 'r', 's', 'kx', 'ky', 'ignite', 'igniteDps', 'toxin', 'toxinDps', 'toxinSt', 'soak', 'jolt', 'frost', 'frostT', 'frozen', 'daze', 'dazeA', 'stun', 'flash', 'anim', 'born', 'shot', 'aim'];
 EF.forEach(k => E[k] = new Float32Array(EMAX));
 const EALL = EF.concat(['uid', 'mob', 'fl', 'dead']);
 let proj = [], eproj = [], fx = [], nums = [], pickups = [], parts = [], dying = [];
@@ -1375,7 +1397,7 @@ function spawnEnemy(mi, o = {}) {
     E.dmg[i] = def.dmg * (1 + t / 60 * .05) * Math.pow(Zm, .6) * D.dmg * (elite ? 1.5 : giant ? 1.8 : 1);
     E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * (giant ? .85 : 1) * (o.spdMul || 1);
   }
-  E.born[i] = .35; E.mhp[i] = E.hp[i]; E.s[i] = def.size / 10 * 1.15 * sz; E.r[i] = def.size * .05 * sz; E.anim[i] = Math.random() * 10;
+  E.born[i] = .35; E.shot[i] = RANGED[def.id] ? rand(1.5, RANGED[def.id].cd) : 0; E.mhp[i] = E.hp[i]; E.s[i] = def.size / 10 * 1.15 * sz; E.r[i] = def.size * .05 * sz; E.anim[i] = Math.random() * 10;
   return i;
 }
 function spawnBoss() {
@@ -1873,8 +1895,15 @@ function updateEnemies(dt) {
       let dx, dy;
       if (E.daze[i] > 0) { E.daze[i] -= dt; if (Math.random() < 2 * dt) E.dazeA[i] = Math.random() * Math.PI * 2; dx = Math.cos(E.dazeA[i]); dy = Math.sin(E.dazeA[i]); }
       else { dx = px - E.x[i]; dy = py - E.y[i]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d; }
-      const sp = E.spd[i] * Math.max(0, 1 - .15 * E.frost[i]);
+      const RG = !isBoss && RANGED[mobDef(i).id];
+      const dP = Math.hypot(px - E.x[i], py - E.y[i]);
+      const hold = RG && dP < RG.range * .75 && E.daze[i] <= 0;
+      const sp = hold ? 0 : E.spd[i] * Math.max(0, 1 - .15 * E.frost[i]);
       vx = dx * sp; vy = dy * sp;
+      if (RG) {
+        if (E.aim[i] > 0) { E.aim[i] -= dt; if (E.aim[i] <= 0) enemyShoot(i, RG); }
+        else { E.shot[i] -= dt; if (E.shot[i] <= 0 && dP < RG.range && Math.abs(E.z[i] - P.z) < 3 && eproj.length < 250) { E.aim[i] = .45; E.shot[i] = RG.cd * rand(.9, 1.1); } }
+      }
       let nb = 0; const ri = E.r[i];
       forNear(E.x[i], E.y[i], ri + 1.5, j => {
         if (j === i) return; const ox = E.x[i] - E.x[j], oy = E.y[i] - E.y[j], rr = ri + E.r[j], d2 = ox * ox + oy * oy;
@@ -1895,6 +1924,13 @@ function updateEnemies(dt) {
     if (dist > 70 && !(E.fl[i] & (ELITE | GIANT | BOSS | ESCORT))) { const [x, y] = ringPos(38, 46); E.x[i] = x; E.y[i] = y; E.z[i] = hAt(x, y); }
   }
   compact();
+}
+function enemyShoot(i, RG) {
+  const a0 = Math.atan2(P.y - E.y[i], P.x - E.x[i]), col = hexRgb(RG.col);
+  for (let k = 0; k < RG.n; k++) {
+    const a = a0 + (k - (RG.n - 1) / 2) * .25;
+    eproj.push({ x: E.x[i], y: E.y[i], z: E.z[i] + .8, vx: Math.cos(a) * RG.spd, vy: Math.sin(a) * RG.spd, life: RG.range / RG.spd * 1.4, dmg: E.dmg[i] * RG.mul, r: .3, col });
+  }
 }
 function updateBoss(dt) {
   const b = G.boss;
@@ -2032,7 +2068,9 @@ const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3
 const SHAPE_H = { slime: 1.15, flyer: 1.0, quad: 1.2, biped: 1.5 };
 const TINT = { frozen: [.6, .9, 1], ignite: [1, .5, .2], toxin: [.7, .35, .9], jolt: [1, .9, .3], soak: [.3, .55, 1] };
 const XPC = [[.75, 1, .45], [.75, 1, .45], [1, .6, .25]];
-const OBJ_SPR = { guardianAltar: ['altar', 2.2], chest: ['chest', 1.0], freeChest: ['freeChest', 1.0], runeStone: ['runeStone', 2.0], goldOre: ['goldOre', 1.0], berryBush: ['berryBush', .8], portal: ['portal', 2.8] };
+// DECISION: 유료 상자(kind 'chest')는 꿈 상인으로 그린다. 로직 이름은 그대로 둔다
+const BEACON = { chest: { c: '#ffd23a', pillar: 1 }, freeChest: { c: '#fff0a0', pillar: 1 }, guardianAltar: { c: '#ff3a4a', pillar: 1 }, runeStone: { c: '#2ec8e0', pillar: 1 }, runeGlow: { c: '#5ad87a', pillar: 1 }, portal: { c: '#c070ff', pillar: 1 }, goldOre: { c: '#ffe066' }, berryBush: { c: '#ff9ad0' } };
+const OBJ_SPR = { guardianAltar: ['altar', 2.2], chest: ['merchant', 1.6], freeChest: ['freeChest', 1.0], runeStone: ['runeStone', 2.0], goldOre: ['goldOre', 1.0], berryBush: ['berryBush', .8], portal: ['portal', 2.8] };
 function updateCamera(dt) {
   if (keys.has('ArrowLeft')) CAM.yaw -= 2 * dt;
   if (keys.has('ArrowRight')) CAM.yaw += 2 * dt;
@@ -2079,7 +2117,18 @@ function drawWorld() {
   for (const o of G.objects) {
     if (!near(o.x, o.y)) continue;
     if (o.kind === 'guardianAltar' && G.boss) continue;
+    if (o.kind === 'chest' && o.used) continue;   // 거래가 끝난 상인은 떠난다
     const [k, h] = OBJ_SPR[o.kind];
+    const BC = BEACON[o.kind === 'runeStone' && o.glow ? 'runeGlow' : o.kind];
+    if (BC && !o.used) {
+      // 멀리서도 보이는 표식: 빛기둥(큰 것만), 머리 위 둥실 마름모, 바닥 맥박 고리. 크기는 그대로
+      const col = hexRgb(BC.c), ph = (T * 1.1 + o.x * .13) % 1;
+      if (BC.pillar) for (let zz = .6; zz < 12; zz += .5) { pushGlow(o.x, o.y, o.z + zz, 1.1, col, .6 * (1 - zz / 12)); pushGlow(o.x, o.y, o.z + zz, .35, [1, 1, 1], .5 * (1 - zz / 12)); }
+      const my = o.z + h + .6 + Math.sin(T * 3 + o.x) * .18;
+      pushSprite('mark', 0, o.x, o.y, my, .55, 0, 0, col, .7);
+      pushGlow(o.x, o.y, my + .3, 1.1, col, .9);
+      pushDecal(o.x, o.y, o.z, .7 + ph * 1.6, col, .55 * (1 - ph), 1, 0, 0, .1);
+    }
     const used = o.used && o.kind !== 'portal';
     pushSprite(k, Math.floor(T * 3), o.x, o.y, o.z, used ? h * .7 : h, 0, 0, used ? [0, 0, 0] : null, used ? .5 : 0);
     pushDecal(o.x, o.y, o.z, .6, SH, .4);
@@ -2107,6 +2156,7 @@ function drawWorld() {
     if (E.frozen[i] > 0) { tint = TINT.frozen; ta = .8; } else if (E.ignite[i] > 0) { tint = TINT.ignite; ta = .35; } else if (E.toxin[i] > 0) { tint = TINT.toxin; ta = .35; }
     else if (E.jolt[i] > 0) { tint = TINT.jolt; ta = .35; } else if (E.soak[i] > 0) { tint = TINT.soak; ta = .45; }
     const fr = E.frozen[i] > 0 ? 0 : Math.floor(E.anim[i] * 2.2);
+    if (E.aim[i] > 0) { const RG = RANGED[def.id]; if (RG) pushGlow(E.x[i], E.y[i], E.z[i] + lift + h * .55, .5 + (1 - E.aim[i] / .45) * .7, hexRgb(RG.col), .9); }
     const rise = E.born[i] > 0 ? E.born[i] / .35 : 0;
     pushSprite(key, fr, E.x[i], E.y[i], E.z[i] + lift - rise * h * .9, h, Math.max(E.flash[i], rise * .6), 0, tint, ta);
     pushDecal(E.x[i], E.y[i], E.z[i], E.r[i] * 1.1 + .1, SH, .4);
@@ -2155,7 +2205,7 @@ function drawWorld() {
     else pushGlow(p.x, p.y, p.z, F.ps || (p.kind === 'orb' ? .9 : p.kind === 'lob' ? .8 : .55), F.glow || p.col, 1);
     if (p.kind === 'lob') pushDecal(p.tx, p.ty, hAt(p.tx, p.ty), p.v.area, p.col, .35, 1, 0, 0, .08);
   }
-  for (const p of eproj) pushGlow(p.x, p.y, p.z, .7, [1, .3, .4], 1);
+  for (const p of eproj) { pushGlow(p.x, p.y, p.z, .75, p.col || [1, .3, .4], 1); pushGlow(p.x, p.y, p.z, .28, [1, 1, 1], 1); }
   for (const f of fx) {
     const u = f.t / f.dur;
     if (f.k === 'ring') pushDecal(f.x, f.y, f.z, f.r * (.35 + .65 * u), f.col, .7 * (1 - u), 1, 0, 0, .18);
@@ -2440,8 +2490,8 @@ function openChest(free) {
   modal = { kind: 'chest', items: relicChoices() };
   if (SIM) { closeModal(); G.state = 'play'; return; }
   const sellV = 8 * G.zone;
-  showPanel(`<div class="panel"><h2>${STR.chestTitle}</h2><p>${STR.chestSub}</p><div class="cards">${modal.items.map((r, i) => `<button class="card" data-i="${i}"><div class="tag" style="background:${RARITY[r.rar].color}">${RARITY[r.rar].name} · ${fmt(STR.relicStack, { n: relicN(r.id) })}</div><div class="row2">${iconImg('i_' + r.id)}<div class="nm">${r.name}</div></div><div class="ds">${r.desc}</div><div class="ky">${fmt(STR.key, { k: i + 1 })}</div></button>`).join('')}</div>
-    <div class="tools"><button class="btn" id="sellB">${fmt(STR.sell, { v: sellV })}</button></div></div>`);
+  showPanel(`<div class="panel"><h2>${free ? STR.freeTitle : STR.chestTitle}</h2><p>${STR.chestSub}</p><div class="cards">${modal.items.map((r, i) => `<button class="card" data-i="${i}"><div class="tag" style="background:${RARITY[r.rar].color}">${RARITY[r.rar].name} · ${fmt(STR.relicStack, { n: relicN(r.id) })}</div><div class="row2">${iconImg('i_' + r.id)}<div class="nm">${r.name}</div></div><div class="ds">${r.desc}</div><div class="ky">${fmt(STR.key, { k: i + 1 })}</div></button>`).join('')}</div>
+    <div class="tools"><button class="btn" id="sellB">${fmt(free ? STR.sell : STR.refund, { v: sellV })}</button></div></div>`);
   ov.querySelectorAll('.card').forEach(b => b.onclick = () => pickChoice(+b.dataset.i));
   $('sellB').onclick = () => { G.coins += sellV; closeModal(); G.state = 'play'; };
 }

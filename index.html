@@ -955,25 +955,34 @@ const terrainMat = new THREE.ShaderMaterial({
 let terrainMesh = null;
 function buildTerrainMesh() {
   if (terrainMesh) { scene.remove(terrainMesh); terrainMesh.geometry.dispose(); }
-  const pos = [], face = [], typ = [], top = [], uv = [], idx = [];
-  let v = 0;
-  const quad = (p, f, t, tp, u) => { for (let k = 0; k < 4; k++) { pos.push(...p[k]); face.push(f); typ.push(t); top.push(tp); uv.push(...u[k]); } idx.push(v, v + 1, v + 2, v, v + 2, v + 3); v += 4; };
+  const nb = (xx, yy) => inMap(xx, yy) ? hmap[yy * N + xx] : 0;
+  let quads = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const h = hmap[y * N + x]; quads++;
+    if (nb(x - 1, y) < h) quads++; if (nb(x + 1, y) < h) quads++; if (nb(x, y - 1) < h) quads++; if (nb(x, y + 1) < h) quads++;
+  }
+  const pos = new Float32Array(quads * 12), face = new Float32Array(quads * 4), typ = new Float32Array(quads * 4), top = new Float32Array(quads * 4), uv = new Float32Array(quads * 8), idx = new Uint32Array(quads * 6);
+  let v = 0, q = 0;
+  const quad = (x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3, f, t, tp, u0, w0, u1, w1, u2, w2, u3, w3) => {
+    pos.set([x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3], v * 3); uv.set([u0, w0, u1, w1, u2, w2, u3, w3], v * 2);
+    for (let k = 0; k < 4; k++) { face[v + k] = f; typ[v + k] = t; top[v + k] = tp; }
+    idx.set([v, v + 1, v + 2, v, v + 2, v + 3], q * 6); v += 4; q++;
+  };
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = y * N + x, h = hmap[i], t = ttype[i];
-    quad([[x, h, y], [x + 1, h, y], [x + 1, h, y + 1], [x, h, y + 1]], 0, t, h, [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]);
-    const nb = (xx, yy) => inMap(xx, yy) ? hmap[yy * N + xx] : 0;
-    let nh = nb(x - 1, y); if (nh < h) quad([[x, nh, y], [x, nh, y + 1], [x, h, y + 1], [x, h, y]], 1, t, h, [[y, nh], [y + 1, nh], [y + 1, h], [y, h]]);
-    nh = nb(x + 1, y); if (nh < h) quad([[x + 1, nh, y + 1], [x + 1, nh, y], [x + 1, h, y], [x + 1, h, y + 1]], 1, t, h, [[y + 1, nh], [y, nh], [y, h], [y + 1, h]]);
-    nh = nb(x, y - 1); if (nh < h) quad([[x + 1, nh, y], [x, nh, y], [x, h, y], [x + 1, h, y]], 2, t, h, [[x + 1, nh], [x, nh], [x, h], [x + 1, h]]);
-    nh = nb(x, y + 1); if (nh < h) quad([[x, nh, y + 1], [x + 1, nh, y + 1], [x + 1, h, y + 1], [x, h, y + 1]], 2, t, h, [[x, nh], [x + 1, nh], [x + 1, h], [x, h]]);
+    quad(x, h, y, x + 1, h, y, x + 1, h, y + 1, x, h, y + 1, 0, t, h, x, y, x + 1, y, x + 1, y + 1, x, y + 1);
+    let nh = nb(x - 1, y); if (nh < h) quad(x, nh, y, x, nh, y + 1, x, h, y + 1, x, h, y, 1, t, h, y, nh, y + 1, nh, y + 1, h, y, h);
+    nh = nb(x + 1, y); if (nh < h) quad(x + 1, nh, y + 1, x + 1, nh, y, x + 1, h, y, x + 1, h, y + 1, 1, t, h, y + 1, nh, y, nh, y, h, y + 1, h);
+    nh = nb(x, y - 1); if (nh < h) quad(x + 1, nh, y, x, nh, y, x, h, y, x + 1, h, y, 2, t, h, x + 1, nh, x, nh, x, h, x + 1, h);
+    nh = nb(x, y + 1); if (nh < h) quad(x, nh, y + 1, x + 1, nh, y + 1, x + 1, h, y + 1, x, h, y + 1, 2, t, h, x, nh, x + 1, nh, x + 1, h, x, h);
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('aFace', new THREE.Float32BufferAttribute(face, 1));
-  g.setAttribute('aType', new THREE.Float32BufferAttribute(typ, 1));
-  g.setAttribute('aTop', new THREE.Float32BufferAttribute(top, 1));
-  g.setAttribute('aUV', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1));
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aFace', new THREE.BufferAttribute(face, 1));
+  g.setAttribute('aType', new THREE.BufferAttribute(typ, 1));
+  g.setAttribute('aTop', new THREE.BufferAttribute(top, 1));
+  g.setAttribute('aUV', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
   terrainMesh = new THREE.Mesh(g, terrainMat); terrainMesh.frustumCulled = false; terrainMesh.renderOrder = 0;
   scene.add(terrainMesh);
 }
@@ -1109,7 +1118,9 @@ const CAM = { yaw: Math.PI / 2, pitch: .45, dist: 9, tx: CX, ty: CY, tz: 3, lift
 const ptr = { joyId: null, ox: 0, oy: 0, jx: 0, jy: 0, camId: null, lx: 0, ly: 0 };
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 addEventListener('keydown', e => {
-  if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  // DECISION: Enter도 기본 동작을 막는다. 포커스가 남은 버튼이 Enter로 한 번 더 눌려 시작·선택이 겹치는 것을 막기 위해
+  if (['Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  if (e.code === 'NumpadEnter' && !e.repeat) { onKey('Enter'); return; }
   if (!e.repeat) onKey(e.code);
   keys.add(e.code);
 });
@@ -2331,6 +2342,8 @@ function refreshTitle() {
   document.querySelectorAll('#diffRow .btn').forEach((c, i) => c.classList.toggle('on', i === menuSel.diff));
 }
 function startGame() {
+  if (G.state !== 'menu') return;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   closeModal(); newRun(menuSel.hero, menuSel.diff);
   $('hud').style.display = 'block'; $('touch').style.display = isTouch ? 'block' : 'none';
 }
@@ -2489,6 +2502,8 @@ window.__game = {
 // 시작: 타이틀 뒤 배경으로 구역 1 지형을 깔아 둔다
 resize();
 genTerrain(0, 12345); buildTerrainMesh(); applyLook(0);
+// DECISION: 모든 재질의 셰이더를 타이틀에서 미리 컴파일한다. 첫 플레이 프레임에 컴파일하느라 한 번 멈추던 문제
+try { renderer.compile(scene, camera); } catch (_) { }
 showTitle();
 requestAnimationFrame(loop);
 </script>

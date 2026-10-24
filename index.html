@@ -52,7 +52,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(255,255,255,.45)}
 #actBtn{display:none;left:50%!important;top:64%;transform:translate(-50%,-50%);width:auto!important;min-width:132px;height:52px!important;border-radius:26px!important;padding:0 22px;font-size:16px!important;border:2px solid rgba(255,255,255,.35)!important;background:#3fbf6a!important;color:#fff!important;box-shadow:0 3px 0 #237a40}
 #actBtn.off{background:#6a6878!important;box-shadow:0 3px 0 #3e3c4a;color:#d8d6e2!important}
-body.touch .pcOnly,body.touch #hint{display:none!important}
+body.touch .pcOnly,body.touch #hint,body.touchP #hint{display:none!important}
+body.touchP #prompt{pointer-events:auto;cursor:pointer}
+body.touchP #joy{bottom:calc(112px + env(safe-area-inset-bottom, 0px))}
+body.touchP #bJump{bottom:calc(120px + env(safe-area-inset-bottom, 0px))}body.touchP #bUlt{bottom:calc(176px + env(safe-area-inset-bottom, 0px))}
 body.touch #skills{left:calc(14px + env(safe-area-inset-left, 0px));bottom:auto;top:104px;gap:5px}
 body.touch .sk{width:46px;height:46px;padding-top:14px;font-size:9px}
 #heroPic canvas{image-rendering:pixelated;display:block;margin:0 auto}
@@ -87,6 +90,7 @@ body.touch #ultw{display:none}
 .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
 .stat div{background:rgba(255,255,255,.05);border-radius:10px;padding:10px}.stat b{display:block;font-size:22px;font-weight:900}
 .sub{color:var(--sub);font-size:12px}
+#err2{position:fixed;left:8px;right:8px;bottom:8px;display:none;z-index:50;background:rgba(120,20,40,.92);color:#fff;font:12px/1.4 monospace;padding:8px 10px;border-radius:8px;white-space:pre-wrap;pointer-events:none}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-weight:700;font-size:18px;padding:20px;text-align:center}
 @media (max-width:700px){
   #tl{width:44vw}#mini{width:72px;height:72px}
@@ -131,7 +135,7 @@ body.touch #ultw{display:none}
 <div id="flash"></div><div id="vig"></div>
 <div id="touch"><div id="joy"><i></i></div><button id="bJump">점프</button><button id="bUlt">궁</button><button id="bPause">II</button><button id="actBtn"></button></div>
 <div id="ov"></div>
-<div id="err"></div>
+<div id="err"></div><div id="err2"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 'use strict';
@@ -343,7 +347,7 @@ const STR = {
   locked: '잠김', lockZone: '구역 2', loadFail: '3D 라이브러리를 불러오지 못했어요. 새로고침해 주세요.',
   stat: { damage: '피해', maxHp: '최대 HP', attackSpeed: '공격 속도', moveSpeed: '이동 속도', critChance: '크리티컬 확률', area: '범위', regen: 'HP 재생', luck: '행운', xpGain: '경험치', armor: '방어력', physical: '물리 피해', magic: '마법 피해', projectiles: '투사체', statusChance: '상태 확률' },
   reactions: { overload: '과충전', steam: '증기 폭발', wildfire: '들불', shatter: '산산조각', toxicBurn: '유독 연소', collapse: '비전 붕괴' },
-  bang: '쾅!', diffs: ['보통', '어려움', '악몽'],
+  errShown: '오류가 났어요. 이 문구를 알려 주세요 →', bang: '쾅!', diffs: ['보통', '어려움', '악몽'],
   hudStats: 'Lv {lvl} · 처치 {kills} · <b>◆ {coins}</b>', hudZone: '구역 {z}/3 · {name}', hudWeather: '{w} · 적 {n}',
   cls: { ph: '물리', mg: '마법' }, baseUp: '기본 피해 +8%', scoreFormula: '점수 = (처치×2 + 시간×3 + 총피해/200 + (구역−1)×1500 + 수호자×800 + 승리 6000) × (1 + 0.5×난이도)',
 };
@@ -1139,7 +1143,7 @@ addEventListener('keydown', e => {
   // DECISION: Enter도 기본 동작을 막는다. 포커스가 남은 버튼이 Enter로 한 번 더 눌려 시작·선택이 겹치는 것을 막기 위해
   if (['Space', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
   if (e.code === 'NumpadEnter' && !e.repeat) { onKey('Enter'); return; }
-  if (!e.repeat) onKey(e.code);
+  if (!e.repeat) { try { onKey(e.code); } catch (er) { reportError(er, 'key ' + e.code); } }
   keys.add(e.code);
 });
 addEventListener('keyup', e => keys.delete(e.code));
@@ -1176,7 +1180,15 @@ glCv.addEventListener('pointerup', ptrEnd); glCv.addEventListener('pointercancel
 glCv.addEventListener('wheel', e => { CAM.dist = clamp(CAM.dist + Math.sign(e.deltaY) * .6, 4, 12); e.preventDefault(); }, { passive: false });
 const tbtn = (id, fn) => document.getElementById(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); fn(); });
 tbtn('bJump', () => req.jump = 1); tbtn('actBtn', () => req.interact = 1); tbtn('bUlt', () => req.ult = 1); tbtn('bPause', () => G.state === 'play' && openPause());
-if (isTouch) document.body.classList.add('touch');
+// 터치 기기: 가로면 모바일 전용 화면(상황 버튼), 세로면 PC와 같은 E 안내·HUD 배치(안내 문구를 누르면 상호작용)
+let mobileUI = false;
+function applyUIMode() {
+  mobileUI = isTouch && innerWidth > innerHeight;
+  document.body.classList.toggle('touch', mobileUI);
+  document.body.classList.toggle('touchP', isTouch && !mobileUI);
+}
+applyUIMode(); addEventListener('resize', applyUIMode); addEventListener('orientationchange', applyUIMode);
+document.getElementById('prompt').addEventListener('pointerdown', e => { if (isTouch && !mobileUI) { e.preventDefault(); req.interact = 1; } });
 
 // ---------- state ----------
 let G = { state: 'menu' }, P = null, SIM = false;
@@ -2217,7 +2229,8 @@ function updateHUD(dt) {
     pr = o.kind === 'guardianAltar' ? STR.pAltar : o.kind === 'chest' ? fmt(G.coins >= chestPrice() ? STR.pChest : STR.pChestNo, { p: chestPrice() }) : o.kind === 'freeChest' ? STR.pFree :
       o.kind === 'goldOre' ? STR.pOre : o.kind === 'berryBush' ? STR.pBerry : G.zone >= 3 ? STR.pPortalLast : fmt(STR.pPortal, { n: G.zone + 1 });
   } else if (G.runeNear) pr = fmt(STR.pRune, { p: Math.floor(G.runeNear.charge / (G.runeNear.glow ? 14 : 8) * 100) });
-  if (isTouch) {
+  if (!mobileUI && isTouch) $('actBtn').style.display = 'none';
+  if (mobileUI) {
     // 모바일: E 프롬프트 대신 화면 가운데 아래에 상황 버튼. 코인이 모자라면 회색
     const o = G.near, act = $('actBtn');
     if (o) {
@@ -2496,14 +2509,27 @@ function onKey(code) {
 
 // ---------- loop ----------
 let last = performance.now();
-function loop(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (G.state === 'play') update(dt);
-  else if (G.state === 'transition') { G.transT -= dt; if (G.transT <= 0) finishTransition(); }
-  if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $('banner').classList.remove('on'); }
-  render(dt);
-  requestAnimationFrame(loop);
+// 루프 안에서 에러가 나도 다음 프레임은 반드시 예약한다(에러 한 번에 화면이 영구히 멈추던 것 방지).
+// 에러 내용은 화면 아래에 띄우고 로그에 남겨, 재현이 안 되는 멈춤도 원인을 알 수 있게 한다.
+let lastErrAt = -9;
+function reportError(e, where) {
+  const msg = `${where}: ${e && e.message || e}`;
+  console.error(msg, e);
+  const t = performance.now() / 1000;
+  if (t - lastErrAt > 3) { lastErrAt = t; if (G && G.log) logEv('error', msg.slice(0, 200)); const el = $('err2'); el.textContent = STR.errShown + ' ' + msg + (e && e.stack ? ' · ' + (e.stack.split('\n')[1] || '').trim() : ''); el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 8000); }
 }
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = clamp((now - last) / 1000, 0, .05); last = now;
+  try {
+    if (G.state === 'play') update(dt);
+    else if (G.state === 'transition') { G.transT -= dt; if (G.transT <= 0) finishTransition(); }
+  } catch (e) { reportError(e, 'update'); }
+  if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $('banner').classList.remove('on'); }
+  try { render(dt); } catch (e) { reportError(e, 'render'); }
+}
+addEventListener('error', e => reportError(e.error || e.message, 'script'));
+addEventListener('unhandledrejection', e => reportError(e.reason, 'promise'));
 function botStep() {
   let best = null, bd = 1600;
   for (const p of pickups) { const d = (p.x - P.x) ** 2 + (p.y - P.y) ** 2; if (d < bd) { bd = d; best = p; } }

@@ -254,12 +254,12 @@ const MOBS = [
 ].map(([id, name, el, shape, tier, hp, spd, dmg, size, xp]) => ({ id, name, el, shape, tier, hp, spd, dmg, size, xp }));
 // 원거리 몬스터: 사거리 안에서 멈춰 서서 예고(0.45초 빛) 뒤 탄을 쏜다. 피해 = 몬스터 피해 × mul. 높이 차 1.6 m 이상이면 안 맞는다
 const RANGED = {
-  arcane_owl: { range: 9, cd: 3.2, spd: 6, mul: .7, n: 1, col: '#ff6ab0' },
-  toy_robot: { range: 10, cd: 2.8, spd: 8, mul: .6, n: 1, col: '#9ff6ff' },
-  storm_jelly: { range: 9, cd: 3.6, spd: 7, mul: .55, n: 3, col: '#ffd23a' },
+  arcane_owl: { range: 9, cd: 3.2, spd: 6, mul: .7, n: 1, col: '#ff4a4a' },
+  toy_robot: { range: 10, cd: 2.8, spd: 8, mul: .6, n: 1, col: '#ff4a4a' },
+  storm_jelly: { range: 9, cd: 3.6, spd: 7, mul: .55, n: 3, col: '#ff4a4a' },
   // 구역 1(등급 0)에도 원거리가 있어야 해서 약한 원거리 2종을 둔다. 사거리·탄 속도가 등급 1보다 낮다
-  blanket_ghost: { range: 8, cd: 3.8, spd: 5, mul: .6, n: 1, col: '#c8a0ff' },
-  frost_moth: { range: 8, cd: 3.4, spd: 5.5, mul: .55, n: 1, col: '#9fe0ff' },
+  blanket_ghost: { range: 8, cd: 3.8, spd: 5, mul: .6, n: 1, col: '#ff4a4a' },
+  frost_moth: { range: 8, cd: 3.4, spd: 5.5, mul: .55, n: 1, col: '#ff4a4a' },
 };
 const BOSSES = [
   { id: 'boss1', name: '이끼 이불 거인', el: 'forest', shape: 'biped', size: 24 },
@@ -1658,6 +1658,7 @@ function spawnEnemy(mi, o = {}) {
   const def = o.boss ? BOSSES[mi] : MOBS[mi], t = effT(), Zm = ZMULT[G.zone - 1], D = G.diff;
   const elite = o.boss ? false : o.elite ?? (Math.random() < .012 + t / 60 * .004 + (G.zone - 1) * .03 + D.elite);
   const giant = !!o.giant, i = E.n++;
+  const fm = G.flood ? Math.max(0, (G.zoneTime - 600) / 60) : 0;   // 최후의 무리: 새로 나오는 적의 HP ×4^분, 피해 ×2^분
   for (const k of EF) E[k][i] = 0;
   E.dead[i] = 0; E.uid[i] = G.nextUid++; E.mob[i] = o.boss ? 100 + mi : mi;
   const shiny = !o.boss && !o.mini && G.ev && G.ev.k === 'eclipse' && Math.random() < .04;
@@ -1668,8 +1669,8 @@ function spawnEnemy(mi, o = {}) {
     // 기본 HP는 약한 빌드용 바닥값. 실제 HP는 spawnBoss에서 fitHp로 화력 × 목표 시간에 맞춘다
     E.hp[i] = BOSS_HP * Zm * D.hp; E.dmg[i] = 22 * Math.pow(Zm, .7) * D.dmg; E.spd[i] = 2.2;
   } else {
-    E.hp[i] = def.hp * (1 + t / 60 * .18) * Zm * D.hp * (elite ? 5 : giant ? 14 : o.mini ? 18 : shiny ? 3 : 1) * (o.hpMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('thick'));
-    E.dmg[i] = def.dmg * (1 + t / 60 * .05) * Math.pow(Zm, .6) * D.dmg * (elite ? 1.5 : giant ? 1.8 : o.mini ? 1.6 : 1) * (o.dmgMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('fierce'));
+    E.hp[i] = def.hp * (1 + t / 60 * .18) * Zm * D.hp * (elite ? 5 : giant ? 14 : o.mini ? 18 : shiny ? 3 : 1) * (o.hpMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('thick')) * Math.pow(4, fm);
+    E.dmg[i] = def.dmg * (1 + t / 60 * .05) * Math.pow(Zm, .6) * D.dmg * (elite ? 1.5 : giant ? 1.8 : o.mini ? 1.6 : 1) * (o.dmgMul || 1) * (1 + .2 * G.phantom) * (1 + .25 * cursed('fierce')) * Math.pow(2, fm);
     E.spd[i] = def.spd * rand(.9, 1.1) * D.spd * spdZ() * (giant ? 1.25 : 1) * (o.spdMul || 1) * (1 + .15 * cursed('swift'));
     if (o.stamp) { E.dx[i] = o.stamp[0]; E.dy[i] = o.stamp[1]; E.life[i] = 12; }
     E.mk[i] = o.mk ?? (o.mini || 0);
@@ -2522,24 +2523,25 @@ function updateBoss(dt) {
 
 // ---- 웨이브 (§4): 악몽 행진(직선 대열), 종이학 떼(하늘 가로지름), 베개 비, 최후의 무리 ----
 function stampede() {
-  const m = pick(G.pool), a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx;
-  const n = Math.round((G.zone === 1 && G.zoneTime < 300 ? 30 : 34 + G.zone * 8) * (1 + .3 * G.diffIdx));
+  // 화면 앞쪽에서 플레이어 쪽으로 달려온다(카메라 반대 방향으로 진행) — 안 보이는 뒤에서 오면 알아채지 못한다
+  const m = pick(G.pool), a = CAM.yaw + Math.PI + rand(-.9, .9), dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx;
+  const n = Math.round((G.zone === 1 && G.zoneTime < 300 ? 36 : 40 + G.zone * 8) * (1 + .3 * G.diffIdx));
   for (let e = 0; e < n; e++) {
-    const side = (e % 17 - 8) * 2.2, back = Math.floor(e / 17) * 3 + rand(0, 2);
+    const side = (e % 11 - 5) * 2.2, back = Math.floor(e / 11) * 3 + rand(0, 2);
     const x = P.x - dx * (34 + back) + px * side, y = P.y - dy * (34 + back) + py * side;
     if (x < 4 || y < 4 || x > N - 4 || y > N - 4) continue;
     spawnEnemy(m, { x, y, elite: false, stamp: [dx, dy], hpMul: .8, dmgMul: 1.3, spdMul: 1.5, mk: 3 });
   }
-  G.lanes.push({ x: P.x, y: P.y, dx, dy, t: 3 });
+  G.lanes.push({ x: P.x, y: P.y, dx, dy, t: 8, w: 12.5 });
   banner(STR.stampede, fmt(STR.stampedeSub, { name: MOBS[m].name })); sfx('horn'); vib(80); G.trauma = Math.min(1, G.trauma + .3);
 }
 function flock() {
   const fly = G.pool.filter(i => MOBS[i].shape === 'flyer'), m = fly.length ? pick(fly) : MOBS.findIndex(d => d.id === (G.zone === 1 ? 'ember_bat' : 'storm_hawk'));
-  const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx, cx = P.x, cy = P.y;
+  const a = CAM.yaw + Math.PI + rand(-.9, .9), dx = Math.cos(a), dy = Math.sin(a), px = -dy, py = dx, cx = P.x, cy = P.y;
   for (let t = 0; t < 20; t++) later(t * .25, () => {
     for (let k = 0; k < 3; k++) { const s = rand(-9, 9), x = cx - dx * 36 + px * s, y = cy - dy * 36 + py * s; if (x > 4 && y > 4 && x < N - 4 && y < N - 4) spawnEnemy(m, { x, y, elite: false, stamp: [dx, dy], hpMul: .5, spdMul: 1.8, mk: 4 }); }
   });
-  G.lanes.push({ x: cx, y: cy, dx, dy, t: 3, w: 9 });
+  G.lanes.push({ x: cx, y: cy, dx, dy, t: 7, w: 9 });
   banner(STR.flock, fmt(STR.flockSub, { name: MOBS[m].name })); sfx('horn');
 }
 function pillowRain() {
@@ -2881,6 +2883,10 @@ function drawWorld() {
       const ax = x0 + l.dx * q - l.dy * half * sd, ay = y0 + l.dy * q + l.dx * half * sd, bx = x0 + l.dx * (q + 2.4) - l.dy * half * sd, by = y0 + l.dy * (q + 2.4) + l.dx * half * sd;
       pushLine(ax, ay, hAt(ax, ay) + .3, bx, by, hAt(bx, by) + .3, [col[0] * a, col[1] * a, col[2] * a]);
     }
+    for (let q = 4; q < span; q += 7) {   // 진행 방향 화살표 ^^
+      const mx = x0 + l.dx * q, my = y0 + l.dy * q, z = hAt(mx, my) + .3;
+      for (const sd of [-1, 1]) { const tx = mx - l.dx * 1.6 - l.dy * 1.4 * sd, ty = my - l.dy * 1.6 + l.dx * 1.4 * sd; pushLine(tx, ty, hAt(tx, ty) + .3, mx, my, z, [col[0] * a, col[1] * a, col[2] * a]); }
+    }
   }
   // 기술 이펙트
   for (let s = 0; s < P.slots; s++) {
@@ -2912,7 +2918,8 @@ function drawWorld() {
     else pushGlow(p.x, p.y, p.z, F.ps || (p.kind === 'orb' ? .9 : p.kind === 'lob' ? .8 : .55), F.glow || p.col, 1);
     if (p.kind === 'lob') pushDecal(p.tx, p.ty, hAt(p.tx, p.ty), p.v.area, p.col, .35, 1, 0, 0, .08);
   }
-  for (const p of eproj) { pushGlow(p.x, p.y, p.z, .75, p.col || [1, .3, .4], 1); pushGlow(p.x, p.y, p.z, .28, [1, 1, 1], 1); }
+  // 적이 쏘는 탄은 종류와 상관없이 빨강(플레이어 탄과 헷갈리지 않게)
+  for (const p of eproj) { pushGlow(p.x, p.y, p.z, .95, [1, .12, .16], .8); pushGlow(p.x, p.y, p.z, .6, [1, .2, .22], 1); pushGlow(p.x, p.y, p.z, .26, [1, .85, .8], 1); }
   for (const f of fx) {
     const u = f.t / f.dur;
     if (f.k === 'ring') pushDecal(f.x, f.y, f.z, f.r * (.35 + .65 * u), f.col, .7 * (1 - u), 1, 0, 0, .18);
@@ -2967,7 +2974,7 @@ function updateHUD(dt) {
   hud.stats.innerHTML = fmt(STR.hudStats, { lvl: P.lvl, kills: G.kills, coins: G.coins });
   hud.hname.textContent = P.hero.names[P.awaken]; hud.hname.style.color = P.hero.eye;
   hud.zinfo.textContent = fmt(STR.hudZone, { z: G.zone, name: ZONES[G.zone - 1].name });
-  hud.timer.textContent = fmtTime(G.zoneTime); hud.timer.classList.toggle('red', G.zoneTime >= 540);
+  { const left = 600 - G.zoneTime; hud.timer.textContent = left > 0 ? fmtTime(left) : '+' + fmtTime(-left); hud.timer.classList.toggle('red', left <= 60); }   // 참고 게임처럼 남은 시간이 줄어들고, 0이 되면 최후의 무리가 시작돼 +로 올라간다
   hud.winfo.textContent = fmt(STR.hudWeather, { w: WEATHERS[G.weather].name, n: E.n }) + (G.ev ? ' · ' + EVT[G.ev.k].name + ' ' + Math.ceil(G.ev.left) + '초' : '') + (G.phantom ? ' · 악몽 ×' + G.phantom : '') + (G.curses.length ? ' · 저주 ' + G.curses.length : '');
   for (let s = 0; s < 4; s++) {
     const d = hud.slots[s], inst = P.skills[s];

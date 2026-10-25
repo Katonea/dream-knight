@@ -1,5 +1,20 @@
 {
  "v": 1,
- "updated": "2026-10-24T12:54:13.642Z",
- "entries": []
+ "updated": "2026-10-25T12:15:40.198Z",
+ "entries": [
+  {
+   "name": "유동찬",
+   "score": 72240,
+   "time": 822.4,
+   "kills": 20589,
+   "level": 71,
+   "diff": 0,
+   "dmg": 3439046,
+   "bosses": 3,
+   "zone": 3,
+   "skill": "fire_arrow",
+   "date": "2026-10-25",
+   "by": "Katonea"
+  }
+ ]
 }

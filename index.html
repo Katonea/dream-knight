@@ -59,7 +59,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#120f1d;color:var(--te
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(255,255,255,.45)}
 #actBtn{display:none;left:50%!important;top:64%;transform:translate(-50%,-50%);width:auto!important;min-width:132px;height:52px!important;border-radius:26px!important;padding:0 22px;font-size:16px!important;border:2px solid rgba(255,255,255,.35)!important;background:#3fbf6a!important;color:#fff!important;box-shadow:0 3px 0 #237a40}
 #actBtn.off{background:#6a6878!important;box-shadow:0 3px 0 #3e3c4a;color:#d8d6e2!important}
-body.touch .pcOnly,body.touch #hint,body.touchP #hint{display:none!important}
+body.touch .pcOnly,body.touchP .pcOnly,body.touch #hint,body.touchP #hint{display:none!important}
 body.touchP #prompt{pointer-events:auto;cursor:pointer}
 body.touchP #joy{bottom:calc(112px + env(safe-area-inset-bottom, 0px))}
 body.touchP #bJump{bottom:calc(120px + env(safe-area-inset-bottom, 0px))}body.touchP #bUlt{bottom:calc(176px + env(safe-area-inset-bottom, 0px))}
@@ -121,6 +121,26 @@ body.touch #ultw{display:none}
   .tools .btn,.btn{min-height:40px;padding:6px 14px}
 }
 @media (prefers-reduced-motion:reduce){.card,#banner,.toast{transition:none!important;animation:none!important}}
+/* 세로 모바일 시작 화면: 카드 3열 + 시작 버튼 하단 고정 */
+@media (max-width:700px) and (orientation:portrait){
+  #ov{padding:10px 10px 0}
+  .panel{padding:12px 12px 0;display:flex;flex-direction:column;min-height:0}
+  .panel h1{font-size:26px}
+  #heroPic canvas{width:44px;height:auto}
+  .panel > p{margin:2px 0 8px;font-size:12px}
+  .panel .sub{font-size:12px;margin:0;color:var(--sub)}
+  #heroCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0}
+  #heroCards .card{padding:24px 6px 8px;min-height:0}
+  #heroCards .card .row2{flex-direction:column;gap:2px;align-items:center;text-align:center}
+  #heroCards .card canvas,#heroCards .card .ic{float:none;width:36px;height:36px;margin:0}
+  #heroCards .card .nm{font-size:14px;text-align:center}
+  #heroCards .card .ds{font-size:10px;text-align:center;margin-top:2px}
+  #diffRow{margin:6px 0 8px!important}
+  #diffRow .btn{padding:6px 10px;min-height:38px}
+  .panel .act{position:sticky;bottom:0;margin:6px -12px 0;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(24,20,48,0),var(--panel) 30%);display:flex;gap:8px;justify-content:center}
+  .panel .act .btn{min-height:48px;font-size:15px}
+  .panel .act #startBtn{flex:1}
+}
 </style>
 </head>
 <body>
@@ -342,7 +362,7 @@ const ELITE = 1, GIANT = 2, BOSS = 4, ESCORT = 8;
 
 const STR = {
   title: '꿈지기 기사', subtitle: '밤의 꿈나라에 번진 악몽을 쓸어내요',
-  pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
+  pickHero: '꿈지기를 고르세요', pickSkill: '시작 기술을 고르세요', pickDiff: '난이도', start: 'Enter · 꿈속으로', startTouch: '꿈속으로 시작', titleKeys: '← → 시작 기술 · ↑ ↓ 난이도 · Enter 시작',
   zoneBanner: '구역 {z} / {name}', zoneSub: '{weather}', slot4: '네 번째 기술 슬롯 해금',
   hint: 'Space 점프(블록은 점프로 올라요 · 공중 점프는 바람 망토) · 마우스 이동 시점 · ← → 카메라 회전 · 휠 줌 · E 상호작용 · R 궁극기',
   newMob: '새 몬스터 등장: {name}', giant: '거대 개체 출현!', giantSub: '쓰러뜨리면 보상 상자',
@@ -3296,7 +3316,7 @@ function showTitle() {
   showPanel(`<div class="panel"><div id="heroPic"></div><h1>${STR.title}</h1><p>${HEROES[0].names[0]} · HP ${HEROES[0].hp} · ${HEROES[0].passiveDesc}</p>
     <div class="sub">${STR.pickSkill}</div><div class="cards" id="heroCards"></div>
     <div class="sub">${STR.pickDiff}</div><div class="row" id="diffRow" style="margin:8px 0 14px"></div>
-    <button class="btn on" id="startBtn">${STR.start}</button> <button class="btn" id="rankB">랭킹</button><p class="pcOnly" style="margin-top:10px">${STR.titleKeys}</p></div>`);
+    <div class="act"><button class="btn on" id="startBtn">${isTouch ? STR.startTouch : STR.start}</button> <button class="btn" id="rankB">랭킹</button></div><p class="pcOnly" style="margin-top:10px">${STR.titleKeys}</p></div>`);
   $('heroPic').appendChild(heroCanvas(0, 3));
   START_SKILLS.forEach((id, i) => {
     const d = SKILL_BY[id], b = document.createElement('button'); b.className = 'card'; b.dataset.i = i;
